@@ -8,8 +8,8 @@ be implemented by any library to execute asynchronous block reads.  Currently an
 is used by the 
 [HttpCogImageInputStream](./src/main/java/it/geosolutions/imageioimpl/plugins/tiff/HttpCogImageInputStream.java)
 ImageInputStream implementation.  This ImageInputStream implementation pre-fetches all of the bytes from the requested 
-grid range asynchronoulsy in parallel and wraps the results in a MemoryCacheImageInputStream.  With the byte data in 
-memory, legacy TIFFImageReader code is free to decode individual tiles without network performance penalties.
+grid range asynchronoulsy and wraps the results in a MemoryCacheImageInputStream.  With the byte data in memory, legacy 
+TIFFImageReader code is free to decode individual tiles without network performance penalties.
  
 
-![alt text](./images/example.png "COG")
+![COG](./images/example.png "COG")
