@@ -12,4 +12,4 @@ grid range asynchronoulsy and wraps the results in a MemoryCacheImageInputStream
 TIFFImageReader code is free to decode individual tiles without network performance penalties.
  
 
-![COG](./images/example.png "COG")
+![COG](./images/sample.png "COG")
