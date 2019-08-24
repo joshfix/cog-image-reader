@@ -12,4 +12,4 @@ grid range asynchronoulsy in parallel and wraps the results in a MemoryCacheImag
 memory, legacy TIFFImageReader code is free to decode individual tiles without network performance penalties.
  
 
-
+![alt text](./images/example.png "COG")
