@@ -25,34 +25,36 @@ public class Test {
     static List<Long> cogTimes = new ArrayList<>();
     static long tiffSum = 0;
     static List<Long> tiffTimes = new ArrayList<>();
+    static ImageReadParam param = new ImageReadParam();
+    static boolean saveFile = false;
+
+    static {
+        int x = 1000;
+        int y = 1000;
+        int width = 3000;
+        int height = 3000;
+
+        param.setSourceRegion(new Rectangle(x, y, width, height));
+    }
 
     public static void main(String... args) throws Exception {
 
-        headToHeadTest(10);
-        //readCog();
+        //headToHeadTest(10);
+        readCog();
         //readTiff();
 
     }
 
     public static void readCog() throws Exception {
-        ImageReadParam param = new ImageReadParam();
-        //param.setSourceRegion(new Rectangle(000, 000, 3000, 3000));
-        BufferedImage bi = readCog(param);
-        display(bi);
+        display(readCog(param));
     }
 
     public static void readTiff() throws Exception {
-        ImageReadParam param = new ImageReadParam();
-        param.setSourceRegion(new Rectangle(000, 000, 3000, 3000));
-        BufferedImage bi = readTiff(param);
-        display(bi);
+        display(readTiff(param));
     }
 
 
     public static void headToHeadTest(int count) throws Exception {
-        ImageReadParam param = new ImageReadParam();
-        param.setSourceRegion(new Rectangle(000, 000, 3000, 3000));
-
         for (int i = 0; i < count; i++) {
             readCog(param);
         }
@@ -100,8 +102,10 @@ public class Test {
     }
 
     public static void display(BufferedImage bi) throws Exception {
-        File outputfile = new File("cog_test.png");
-        ImageIO.write(bi, "png", outputfile);
+        if (saveFile) {
+            File outputfile = new File("cog_test.png");
+            ImageIO.write(bi, "png", outputfile);
+        }
 
         JLabel picLabel = new JLabel(new ImageIcon(bi));
         picLabel.setVisible(true);

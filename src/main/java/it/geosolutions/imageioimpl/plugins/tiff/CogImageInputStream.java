@@ -6,9 +6,6 @@ package it.geosolutions.imageioimpl.plugins.tiff;
  */
 public interface CogImageInputStream {
 
-    /**
-     *
-     * @param ranges
-     */
     void readRanges(long[][] ranges);
+
 }

@@ -17,7 +17,7 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
 
     protected int headerSize = 16384;
     protected String url;
-    protected ByteBuffer warmCache;
+    protected ByteBuffer byteBuffer;
     protected HttpRangeReader rangeReader = new HttpRangeReader();
     protected int fileSize;
     protected long[][] ranges;
@@ -32,19 +32,21 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
 
         // get the file size with a HEAD request
         fileSize = rangeReader.getFileSize(url);
-        warmCache = ByteBuffer.allocate(fileSize);
+        byteBuffer = ByteBuffer.allocate(fileSize);
 
         // read the header
-        rangeReader.read(warmCache, url, 0, headerSize);
+        System.out.println("Reading header with size " + headerSize);
+        rangeReader.read(byteBuffer, url, 0, headerSize);
 
         // wrap the result in a MemoryCacheInputStream
-        delegate = new MemoryCacheImageInputStream(new ByteArrayInputStream(warmCache.array()));
+        delegate = new MemoryCacheImageInputStream(new ByteArrayInputStream(byteBuffer.array()));
     }
 
     @Override
     public void readRanges(long[][] ranges) {
+        System.out.println("Reading " + ranges.length + " ranges.");
         this.ranges = ranges;
-        rangeReader.readAsync(warmCache, url, ranges);
+        rangeReader.readAsync(byteBuffer, url, ranges);
         ByteOrder byteOrder = delegate.getByteOrder();
         long streamPos = 0;
         try {
@@ -52,7 +54,7 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
         } catch (IOException e) {
             e.printStackTrace();
         }
-        delegate = new MemoryCacheImageInputStream(new ByteArrayInputStream(warmCache.array()));
+        delegate = new MemoryCacheImageInputStream(new ByteArrayInputStream(byteBuffer.array()));
         delegate.setByteOrder(byteOrder);
         try {
             delegate.seek(streamPos);
@@ -96,7 +98,7 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
 
     @Override
     public long length() {
-        return warmCache.array().length;
+        return byteBuffer.array().length;
     }
 
     @Override

@@ -6,24 +6,12 @@ import it.geosolutions.imageio.plugins.tiff.TIFFField;
 import javax.imageio.IIOException;
 import javax.imageio.ImageReadParam;
 import javax.imageio.spi.ImageReaderSpi;
-import javax.imageio.stream.ImageInputStream;
-import javax.imageio.stream.MemoryCacheImageInputStream;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpHeaders;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.time.Duration;
-import java.time.Instant;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * @author joshfix
@@ -37,6 +25,14 @@ public class CogImageReader extends TIFFImageReader {
 
     @Override
     public BufferedImage read(int imageIndex, ImageReadParam param) throws IOException {
+        // TODO: prepareRead method in TIFFIMageReader should be protected, not private?
+        try {
+            Method prepareRead = TIFFImageReader.class.getDeclaredMethod("prepareRead", int.class, ImageReadParam.class);
+            prepareRead.setAccessible(true);
+            prepareRead.invoke(this, imageIndex, param);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         // prepare for reading
         this.theImage = getDestination(param, getImageTypes(imageIndex), width, height, noData);
 
@@ -99,8 +95,6 @@ public class CogImageReader extends TIFFImageReader {
                         break;
                     }
 
-                    //System.out.println("tile(" + tileX + ", " + tileY + ")");
-
                     if (tileY == minTileY && tileX == minTileX) {
                         continue;
                     }
@@ -129,14 +123,17 @@ public class CogImageReader extends TIFFImageReader {
         }
         ranges.add(new long[]{rangeStart, rangeEnd});
 
-        // read the ranges into the input delegate's warm cache
+        // read the ranges and cache them in the image input stream delegate
         if (stream instanceof CogImageInputStream) {
             ((CogImageInputStream)stream).readRanges(ranges.toArray(new long[][]{}));
         }
 
+        // At this point, the CogImageInputStream has fetched and cached all of the bytes from the requested tiles.
+        // Now we proceed with the legacy TIFFImageReader code.
         return super.read(imageIndex, param);
     }
 
+    // TODO: this method should be protected in TIFFImageReader so it need not be reimplemented
     protected long getTileOrStripOffset(int tileIndex) throws IIOException {
         TIFFField f = this.imageMetadata.getTIFFField(324);
         if (f == null) {
@@ -154,6 +151,7 @@ public class CogImageReader extends TIFFImageReader {
         }
     }
 
+    // TODO: this method should be protected in TIFFImageReader so it need not be reimplemented
     protected long getTileOrStripByteCount(int tileIndex) throws IOException {
         TIFFField f = this.imageMetadata.getTIFFField(325);
         if (f == null) {

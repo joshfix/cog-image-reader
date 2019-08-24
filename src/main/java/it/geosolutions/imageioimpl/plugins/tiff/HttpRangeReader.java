@@ -21,6 +21,8 @@ import static java.net.http.HttpClient.Version.HTTP_2;
 public class HttpRangeReader implements RangeReader {
 
     protected HttpClient client;
+    protected int fileSize = -1;
+    public static final String CONTENT_LENGTH_HEADER = "content-length";
 
     public HttpRangeReader() {
         client = HttpClient.newBuilder()
@@ -31,26 +33,29 @@ public class HttpRangeReader implements RangeReader {
     }
 
     public int getFileSize(String url) {
+        if (fileSize > 1) {
+            return fileSize;
+        }
         try {
-            HttpClient client = HttpClient.newBuilder()
-                    .version(HttpClient.Version.HTTP_2)
-                    .build();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .method("HEAD", HttpRequest.BodyPublishers.noBody())
                     .build();
-            HttpHeaders headers = client.send(request, HttpResponse.BodyHandlers.discarding())
+
+            HttpHeaders headers = client
+                    .send(request, HttpResponse.BodyHandlers.discarding())
                     .headers();
 
-            Optional<String> length = headers.firstValue("content-length");
+            Optional<String> length = headers.firstValue(CONTENT_LENGTH_HEADER);
+
             if (length.isPresent()) {
-                return Integer.parseInt(length.get());
+                fileSize = Integer.parseInt(length.get());
             }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return -1;
+        return fileSize;
     }
 
     @Override
@@ -67,7 +72,6 @@ public class HttpRangeReader implements RangeReader {
     @Override
     public void readAsync(ByteBuffer byteBuffer, String url, long[]... ranges) {
         Instant start = Instant.now();
-
         Map<Long, CompletableFuture<byte[]>> futureResults = new HashMap<>(ranges.length);
 
         for (int i = 0; i < ranges.length; i++) {
@@ -85,19 +89,22 @@ public class HttpRangeReader implements RangeReader {
         byteBuffer.put(bytes);
     }
 
-
     protected void awaitCompletion(Map<Long, CompletableFuture<byte[]>> futureResults, ByteBuffer byteBuffer) {
         boolean stillWaiting = true;
+        List<Long> completed = new ArrayList<>(futureResults.size());
         while (stillWaiting) {
             boolean allDone = true;
             for (Map.Entry<Long, CompletableFuture<byte[]>> entry : futureResults.entrySet()) {
                 long key = entry.getKey();
                 CompletableFuture<byte[]> value = entry.getValue();
                 if (value.isDone()) {
-                    try {
-                        writeValue(byteBuffer, (int)key, value.get());
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                    if (!completed.contains(key)) {
+                        try {
+                            writeValue(byteBuffer, (int) key, value.get());
+                            completed.add(key);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                     }
                 } else {
                     allDone = false;
@@ -113,7 +120,7 @@ public class HttpRangeReader implements RangeReader {
                 .GET()
                 .uri(URI.create(url))
                 .header("Accept", "*/*")
-                .header("Range", "bytes=" + range[0] + "-" + range[1])
+                .header("Range", "bytes=" + range[0] + "-" +  range[1])
                 .build();
     }
 
