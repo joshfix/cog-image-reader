@@ -103,7 +103,7 @@ public class Test {
 
     public static void display(BufferedImage bi) throws Exception {
         if (saveFile) {
-            File outputfile = new File("cog_test.png");
+            File outputfile = new File("example.png");
             ImageIO.write(bi, "png", outputfile);
         }
 
