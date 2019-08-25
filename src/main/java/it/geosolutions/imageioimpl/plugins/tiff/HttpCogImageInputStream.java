@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author joshfix
@@ -20,7 +22,7 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
     protected ByteBuffer byteBuffer;
     protected HttpRangeReader rangeReader = new HttpRangeReader();
     protected int fileSize;
-    protected long[][] ranges;
+    //protected long[][] ranges;
     protected MemoryCacheImageInputStream delegate;
 
     public HttpCogImageInputStream(URL url) {
@@ -44,8 +46,10 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
 
     @Override
     public void readRanges(long[][] ranges) {
+        // dont' re-read what we've already read for the header
+        ranges = reconcileRanges(ranges);
+
         System.out.println("Reading " + ranges.length + " ranges.");
-        this.ranges = ranges;
         rangeReader.readAsync(byteBuffer, url, ranges);
         ByteOrder byteOrder = delegate.getByteOrder();
         long streamPos = 0;
@@ -61,6 +65,43 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Prevents making new range requests for image data that overlap with the header range that has already been read
+     * @param ranges
+     * @return
+     */
+    protected long[][] reconcileRanges(long[][] ranges) {
+        boolean modified = false;
+        List<long[]> newRanges = new ArrayList<>();
+        for (int i = 0; i < ranges.length; i++) {
+            if (ranges[i][0] < headerSize) {
+                // this range starts inside of what we already read for the header
+                modified = true;
+                if (ranges[i][1] < headerSize) {
+                    // this range is fully inside the header which was already read; discard this range
+                    System.out.println("removed range " + ranges[i][0] + "-" + ranges[i][1]);
+                } else {
+                    // this range starts inside the header range, but ends outside of it.
+                    // add a new range that starts at the end of the header range
+                    newRanges.add(new long[]{headerSize + 1, ranges[i][1]});
+                    System.out.println("modified range " + ranges[i][0] + "-" + ranges[i][1]
+                            + " to " + (headerSize + 1) + "-" + ranges[i][1]);
+                }
+            } else {
+                // fully outside the header area, keep the range
+                newRanges.add(ranges[i]);
+            }
+        }
+
+        if (modified) {
+            return newRanges.toArray(new long[][]{});
+        } else {
+            System.out.println("No ranges modified.");
+            return ranges;
+        }
+
     }
 
     public String getUrl() {

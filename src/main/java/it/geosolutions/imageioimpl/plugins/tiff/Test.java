@@ -29,9 +29,9 @@ public class Test {
     static boolean saveFile = false;
 
     static {
-        int x = 1000;
-        int y = 1000;
-        int width = 3000;
+        int x = 000;
+        int y = 000;
+        int width = 2000;
         int height = 3000;
 
         param.setSourceRegion(new Rectangle(x, y, width, height));

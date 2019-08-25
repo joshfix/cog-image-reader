@@ -25,7 +25,12 @@ public class CogImageReader extends TIFFImageReader {
 
     @Override
     public BufferedImage read(int imageIndex, ImageReadParam param) throws IOException {
-        // TODO: prepareRead method in TIFFIMageReader should be protected, not private?
+        // if the image input stream isn't a CogImageInputStream, skip all this nonsense and just use the original code
+        if (!(stream instanceof CogImageInputStream)) {
+            return super.read(imageIndex, param);
+        }
+
+        // TODO: would be very nice if prepareRead method in TIFFIMageReader was protected and not private
         try {
             Method prepareRead = TIFFImageReader.class.getDeclaredMethod("prepareRead", int.class, ImageReadParam.class);
             prepareRead.setAccessible(true);
@@ -57,76 +62,51 @@ public class CogImageReader extends TIFFImageReader {
 
         long rangeStart = getTileOrStripOffset(firstTileIndex);
         long rangeEnd = rangeStart + getTileOrStripByteCount(firstTileIndex) - 1;
-        if (planarConfiguration == BaselineTIFFTagSet.PLANAR_CONFIGURATION_PLANAR) {
-            //decompressor.setPlanar(true);
-            int[] sb = new int[1];
-            int[] db = new int[1];
-            for (int tj = minTileY; tj <= maxTileY; tj++) {
-                for (int ti = minTileX; ti <= maxTileX; ti++) {
-                    for (int band = 0; band < numBands; band++) {
-                        //sb[0] = sourceBands[band];
-                        //decompressor.setSourceBands(sb);
-                        //db[0] = destinationBands[band];
-                        //decompressor.setDestinationBands(db);
-                        //XXX decompressor.beginDecoding();
 
-                        // The method abortRequested() is synchronized
-                        // so check it only once per loop just before
-                        // doing any actual decoding.
-                        if (abortRequested()) {
-                            isAbortRequested = true;
-                            break;
-                        }
-                        //decodeTile(ti, tj, band);
-                    }
-                    if (isAbortRequested) break;
-                }
-                if (isAbortRequested) break;
-            }
-        } else {
-            int band = -1;
-            for (int tileY = minTileY; tileY <= maxTileY; tileY++) {
-                for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
-                    // The method abortRequested() is synchronized
-                    // so check it only once per loop just before
-                    // doing any actual decoding.
-                    if (abortRequested()) {
-                        isAbortRequested = true;
-                        break;
-                    }
 
-                    if (tileY == minTileY && tileX == minTileX) {
-                        continue;
-                    }
-
-                    int tileIndex = tileY * tilesAcross + tileX;
-
-                    if (planarConfiguration == BaselineTIFFTagSet.PLANAR_CONFIGURATION_PLANAR) {
-                        tileIndex += band * tilesAcross * tilesDown;
-                    }
-
-                    long offset = getTileOrStripOffset(tileIndex);
-
-                    if (offset == rangeEnd + 1) {
-                        // this tile starts where the last one left off
-                        rangeEnd = offset + getTileOrStripByteCount(tileIndex) - 1;
-                    } else {
-                        // this tile is in a new position.  add the current range and start a new one.
-                        ranges.add(new long[]{rangeStart, rangeEnd});
-                        rangeStart = offset;
-                        rangeEnd = rangeStart + getTileOrStripByteCount(tileIndex) - 1;
-                    }
+        // loops through each requested tile and determine if they byte positions are consecutive
+        // builds long[][] array of all ranges needed to be requested
+        int band = -1;
+        for (int tileY = minTileY; tileY <= maxTileY; tileY++) {
+            for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
+                // The method abortRequested() is synchronized so check it only once per loop just before
+                // doing any actual decoding.
+                if (abortRequested()) {
+                    isAbortRequested = true;
+                    break;
                 }
 
-                if (isAbortRequested) break;
+                // skip the first tile -- there is no previous tile to compare to
+                if (tileY == minTileY && tileX == minTileX) {
+                    continue;
+                }
+
+                int tileIndex = -1;
+                if (planarConfiguration == BaselineTIFFTagSet.PLANAR_CONFIGURATION_PLANAR) {
+                    tileIndex += band * tilesAcross * tilesDown;
+                } else {
+                    tileIndex = tileY * tilesAcross + tileX;
+                }
+
+                long offset = getTileOrStripOffset(tileIndex);
+                if (offset == rangeEnd + 1) {
+                    // this tile starts where the last one left off
+                    rangeEnd = offset + getTileOrStripByteCount(tileIndex) - 1;
+                } else {
+                    // this tile is in a new position.  add the current range and start a new one.
+                    ranges.add(new long[]{rangeStart, rangeEnd});
+                    rangeStart = offset;
+                    rangeEnd = rangeStart + getTileOrStripByteCount(tileIndex) - 1;
+                }
             }
+
+            if (isAbortRequested) break;
         }
+
         ranges.add(new long[]{rangeStart, rangeEnd});
 
         // read the ranges and cache them in the image input stream delegate
-        if (stream instanceof CogImageInputStream) {
-            ((CogImageInputStream)stream).readRanges(ranges.toArray(new long[][]{}));
-        }
+        ((CogImageInputStream) stream).readRanges(ranges.toArray(new long[][]{}));
 
         // At this point, the CogImageInputStream has fetched and cached all of the bytes from the requested tiles.
         // Now we proceed with the legacy TIFFImageReader code.
