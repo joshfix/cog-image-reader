@@ -51,22 +51,19 @@ public class HttpRangeReader implements RangeReader {
         writeValue(0, read(0, headerSize));
     }
 
+    @Override
     public int getHeaderSize() {
         return headerSize;
     }
 
+    @Override
     public int getFileSize() {
         return fileSize;
     }
 
+    @Override
     public byte[] getBytes() {
         return buffer.array();
-    }
-
-    protected byte[] read(long start, long end) {
-        byte[] bytes = get(buildRequest(new long[]{start, end}));
-        writeValue((int) start, bytes);
-        return bytes;
     }
 
     @Override
@@ -178,6 +175,12 @@ public class HttpRangeReader implements RangeReader {
         return client
                 .sendAsync(request, HttpResponse.BodyHandlers.ofByteArray())
                 .thenApply(HttpResponse::body);
+    }
+
+    protected byte[] read(long start, long end) {
+        byte[] bytes = get(buildRequest(new long[]{start, end}));
+        writeValue((int) start, bytes);
+        return bytes;
     }
 
     /**
