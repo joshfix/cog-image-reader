@@ -22,7 +22,6 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
     protected ByteBuffer byteBuffer;
     protected HttpRangeReader rangeReader = new HttpRangeReader();
     protected int fileSize;
-    //protected long[][] ranges;
     protected MemoryCacheImageInputStream delegate;
 
     public HttpCogImageInputStream(URL url) {
@@ -50,7 +49,7 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
         // dont' re-read what we've already read for the header
         ranges = reconcileRanges(ranges);
 
-        System.out.println("Submitting " + ranges.length + " range requests.");
+        System.out.println("Submitting " + ranges.length + " range request(s)");
         rangeReader.readAsync(byteBuffer, url, ranges);
         ByteOrder byteOrder = delegate.getByteOrder();
         long streamPos = 0;
@@ -82,13 +81,15 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
                 modified = true;
                 if (ranges[i][1] < headerSize) {
                     // this range is fully inside the header which was already read; discard this range
-                    System.out.println("removed range " + ranges[i][0] + "-" + ranges[i][1]);
+                    System.out.println("Removed range " + ranges[i][0] + "-" + ranges[i][1] + " as it lies fully within"
+                    + " the data already read in the header request");
                 } else {
                     // this range starts inside the header range, but ends outside of it.
                     // add a new range that starts at the end of the header range
                     newRanges.add(new long[]{headerSize + 1, ranges[i][1]});
-                    System.out.println("modified range " + ranges[i][0] + "-" + ranges[i][1]
-                            + " to " + (headerSize + 1) + "-" + ranges[i][1]);
+                    System.out.println("Modified range " + ranges[i][0] + "-" + ranges[i][1]
+                            + " to " + (headerSize + 1) + "-" + ranges[i][1] + " as it overlaps with data previously"
+                            + " read in the header request");
                 }
             } else {
                 // fully outside the header area, keep the range

@@ -30,6 +30,10 @@ public class CogImageReader extends TIFFImageReader {
             return super.read(imageIndex, param);
         }
 
+        System.out.println("Reading pixels at offset (" + param.getSourceRegion().getX() + ", "
+                + param.getSourceRegion().getY() + ") with a width of " + param.getSourceRegion().getWidth()
+                + "px and height of " + param.getSourceRegion().getHeight() + "px");
+
         // TODO: would be very nice if prepareRead method in TIFFIMageReader was protected and not private
         try {
             Method prepareRead = TIFFImageReader.class.getDeclaredMethod("prepareRead", int.class, ImageReadParam.class);
