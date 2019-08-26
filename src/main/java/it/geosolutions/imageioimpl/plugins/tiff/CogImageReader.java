@@ -112,7 +112,7 @@ public class CogImageReader extends TIFFImageReader {
         ranges.add(new long[]{rangeStart, rangeEnd});
 
         // read the ranges and cache them in the image input stream delegate
-        ((CogImageInputStream) stream).readRanges(ranges.toArray(new long[][]{}));
+        ((CogImageInputStream) stream).readRanges(ranges);
 
         // At this point, the CogImageInputStream has fetched and cached all of the bytes from the requested tiles.
         // Now we proceed with the legacy TIFFImageReader code.

@@ -2,6 +2,7 @@ package it.geosolutions.imageioimpl.plugins.tiff;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
@@ -20,7 +21,7 @@ import static java.net.http.HttpClient.Version.HTTP_2;
  */
 public class HttpRangeReader implements RangeReader {
 
-    protected String url;
+    protected URI uri;
     protected HttpClient client;
     protected ByteBuffer buffer;
 
@@ -31,7 +32,15 @@ public class HttpRangeReader implements RangeReader {
     public static final String CONTENT_RANGE_HEADER = "content-range";
 
     public HttpRangeReader(String url) {
-        this.url = url;
+        this(URI.create(url));
+    }
+
+    public HttpRangeReader(URL url) {
+        this(URI.create(url.toString()));
+    }
+
+    public HttpRangeReader(URI uri) {
+        this.uri= uri;
         client = HttpClient.newBuilder()
                 .version(HTTP_2)
                 .connectTimeout(Duration.ofSeconds(timeout))
@@ -156,10 +165,10 @@ public class HttpRangeReader implements RangeReader {
     }
 
     protected HttpRequest buildRequest(long[] range) {
-        System.out.println("Building request for range " + range[0] + '-' + range[1] + " to " + url);
+        System.out.println("Building request for range " + range[0] + '-' + range[1] + " to " + uri.toString());
         return HttpRequest.newBuilder()
                 .GET()
-                .uri(URI.create(url))
+                .uri(uri)
                 .header("Accept", "*/*")
                 .header("Range", "bytes=" + range[0] + "-" + range[1])
                 .build();

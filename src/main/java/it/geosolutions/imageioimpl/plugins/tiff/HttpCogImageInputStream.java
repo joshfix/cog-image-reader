@@ -5,8 +5,10 @@ import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.MemoryCacheImageInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.ByteOrder;
+import java.util.Collection;
 
 /**
  * @author joshfix
@@ -14,20 +16,28 @@ import java.nio.ByteOrder;
  */
 public class HttpCogImageInputStream implements ImageInputStream, CogImageInputStream {
 
-    protected String url;
+    protected URI uri;
     protected HttpRangeReader rangeReader;
     protected MemoryCacheImageInputStream delegate;
 
-    public HttpCogImageInputStream(URL url) {
-        this(url.toString());
+    public HttpCogImageInputStream(String url) {
+        this(URI.create(url));
     }
 
-    public HttpCogImageInputStream(String url) {
-        this.url = url;
+    public HttpCogImageInputStream(URL url) {
+        this(URI.create(url.toString()));
+    }
 
-        rangeReader = new HttpRangeReader(url);
+    public HttpCogImageInputStream(URI uri) {
+        this.uri = uri;
+        rangeReader = new HttpRangeReader(uri);
         // wrap the result in a MemoryCacheInputStream
         delegate = new MemoryCacheImageInputStream(new ByteArrayInputStream(rangeReader.getBytes()));
+    }
+
+    @Override
+    public void readRanges(Collection<long[]> ranges) {
+        readRanges(ranges.toArray(new long[][]{}));
     }
 
     @Override
@@ -52,7 +62,7 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
     }
 
     public String getUrl() {
-        return url;
+        return uri.toString();
     }
 
     public ImageInputStream getDelegate() {
