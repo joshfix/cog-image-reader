@@ -17,11 +17,13 @@ This prevents us from having to modify existing logic and allows the TIFFImageRe
 tile individually, as the bytes have already been read into memory.
 
 [CogImageReader](./src/main/java/it/geosolutions/imageioimpl/plugins/tiff/CogImageReader.java) extends from TIFFImageReader 
-and overrides the `read` method.  It provides the logic to determine which byte ranges need to be read. 
+and overrides the `read` method.  It provides the logic to determine which byte ranges need to be read before passing 
+the request on to TIFFImageReader's `read` method. 
 
-[RangeReader](./src/main/java/it/geosolutions/imageioimpl/plugins/tiff/RangeReader.java) is a newly intoruduced interface.  
+[RangeReader](./src/main/java/it/geosolutions/imageioimpl/plugins/tiff/RangeReader.java) is a newly introduced interface. 
 This interface can be implemented by any library to execute asynchronous block reads.  Currently an HTTP implementation 
-is provided: [HttpRangeReader](./src/main/java/it/geosolutions/imageioimpl/plugins/tiff/HttpRangeReader.java)  
+is provided: [HttpRangeReader](./src/main/java/it/geosolutions/imageioimpl/plugins/tiff/HttpRangeReader.java).  This 
+interface should likely be expanded to handle collections and various other types of representations of ranges.
 
 [CogImageInputStream](./src/main/java/it/geosolutions/imageioimpl/plugins/tiff/CogImageInputStream.java) is an interface 
 that defines a single method, `readRanges`, and accepts a 2D long array as a method parameter containing all of the 
@@ -38,12 +40,15 @@ it is statically coded to fetch the first 16KB (mimicking the default behavior o
 configurable in the future.  The class also contains logic to prevent re-reading data from supplied byte ranges if the 
 byte ranges fall inside of the header range that has already been read. 
  
-This project is still very much in the prototype stage and still needs better error handling, logging, tests, etc.
+This project is still very much in the prototype stage and still needs better error handling, logging, tests, etc.  The 
+package name aligns with the imageio-ext TIFFImageReader to take advantage of protected class members.  There are still 
+some private methods and variables in TIFFImageReader that require duplication of code and use of reflection in 
+CogImageReader.  
 
 ### Sample Debug Outputs
-Reading an entire image.  Because all tiles are contiguous, only 1 range request is made.  The byte locations, as 
+* Reading an entire image.  Because all tiles are contiguous, only 1 range request is made.  The byte locations, as 
 calculated by CogImageReader, are modified by HttpCogImageInputStream as to not re-request data that was read in the 
-header.
+header:
 ```
 File size: 52468640
 Reading header with size 16384
@@ -57,8 +62,8 @@ Time to read all ranges: PT8.227302S
 Time for COG: 9271ms
 ```
 ---
-Reading only the first tile.  No additional range requests are necessary as the first tile was actually fully read in 
-the header request.
+* Reading only the first tile.  No additional range requests are necessary as the first tile was actually fully read in 
+the header request:
 ```
 File size: 52468640
 Reading header with size 16384
@@ -71,7 +76,7 @@ Time to read all ranges: PT0.000036S
 Time for COG: 164ms
 ```
 ---
-Reading an arbitrary portion of the image.  Multiple range requests are required where the tiles are not contiguous.
+* Reading an arbitrary portion of the image.  Multiple range requests are required where the tiles are not contiguous:
 ```
 File size: 52468640
 Reading header with size 16384
