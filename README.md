@@ -1,6 +1,6 @@
 # Cloud Optimized GeoTIFF Reader 
 
-###Overview
+### Overview
 Cloud Optimized GeoTIFF (COG) reader for imageio-ext.   
 
 The current GeoTools [GeoTiffReader](https://github.com/geotools/geotools/blob/master/modules/plugin/geotiff/src/main/java/org/geotools/gce/geotiff/GeoTiffReader.java) 
@@ -40,7 +40,7 @@ byte ranges fall inside of the header range that has already been read.
  
 This project is still very much in the prototype stage and still needs better error handling, logging, tests, etc.
 
-###Sample Debug Outputs
+### Sample Debug Outputs
 Reading an entire image.  Because all tiles are contiguous, only 1 range request is made.  The byte locations, as 
 calculated by CogImageReader, are modified by HttpCogImageInputStream as to not re-request data that was read in the 
 header.
