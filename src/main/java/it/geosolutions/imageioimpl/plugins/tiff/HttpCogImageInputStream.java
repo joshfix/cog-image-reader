@@ -6,10 +6,7 @@ import javax.imageio.stream.MemoryCacheImageInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URL;
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * @author joshfix
@@ -17,11 +14,8 @@ import java.util.List;
  */
 public class HttpCogImageInputStream implements ImageInputStream, CogImageInputStream {
 
-    protected int headerSize = 16384;
     protected String url;
-    protected ByteBuffer byteBuffer;
-    protected HttpRangeReader rangeReader = new HttpRangeReader();
-    protected int fileSize;
+    protected HttpRangeReader rangeReader;
     protected MemoryCacheImageInputStream delegate;
 
     public HttpCogImageInputStream(URL url) {
@@ -31,26 +25,16 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
     public HttpCogImageInputStream(String url) {
         this.url = url;
 
-        // get the file size with a HEAD request
-        fileSize = rangeReader.getFileSize(url);
-        System.out.println("File size: " + fileSize);
-        byteBuffer = ByteBuffer.allocate(fileSize);
-
-        // read the header
-        System.out.println("Reading header with size " + headerSize);
-        rangeReader.read(byteBuffer, url, 0, headerSize);
-
+        rangeReader = new HttpRangeReader(url);
         // wrap the result in a MemoryCacheInputStream
-        delegate = new MemoryCacheImageInputStream(new ByteArrayInputStream(byteBuffer.array()));
+        delegate = new MemoryCacheImageInputStream(new ByteArrayInputStream(rangeReader.getBytes()));
     }
 
     @Override
     public void readRanges(long[][] ranges) {
-        // dont' re-read what we've already read for the header
-        ranges = reconcileRanges(ranges);
-
+        // read data with the RangeReader and set the byte order and pointer on the new input stream
         System.out.println("Submitting " + ranges.length + " range request(s)");
-        rangeReader.readAsync(byteBuffer, url, ranges);
+        rangeReader.readAsync(ranges);
         ByteOrder byteOrder = delegate.getByteOrder();
         long streamPos = 0;
         try {
@@ -58,52 +42,13 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
         } catch (IOException e) {
             e.printStackTrace();
         }
-        delegate = new MemoryCacheImageInputStream(new ByteArrayInputStream(byteBuffer.array()));
+        delegate = new MemoryCacheImageInputStream(new ByteArrayInputStream(rangeReader.getBytes()));
         delegate.setByteOrder(byteOrder);
         try {
             delegate.seek(streamPos);
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    /**
-     * Prevents making new range requests for image data that overlap with the header range that has already been read
-     * @param ranges
-     * @return
-     */
-    protected long[][] reconcileRanges(long[][] ranges) {
-        boolean modified = false;
-        List<long[]> newRanges = new ArrayList<>();
-        for (int i = 0; i < ranges.length; i++) {
-            if (ranges[i][0] < headerSize) {
-                // this range starts inside of what we already read for the header
-                modified = true;
-                if (ranges[i][1] < headerSize) {
-                    // this range is fully inside the header which was already read; discard this range
-                    System.out.println("Removed range " + ranges[i][0] + "-" + ranges[i][1] + " as it lies fully within"
-                    + " the data already read in the header request");
-                } else {
-                    // this range starts inside the header range, but ends outside of it.
-                    // add a new range that starts at the end of the header range
-                    newRanges.add(new long[]{headerSize + 1, ranges[i][1]});
-                    System.out.println("Modified range " + ranges[i][0] + "-" + ranges[i][1]
-                            + " to " + (headerSize + 1) + "-" + ranges[i][1] + " as it overlaps with data previously"
-                            + " read in the header request");
-                }
-            } else {
-                // fully outside the header area, keep the range
-                newRanges.add(ranges[i]);
-            }
-        }
-
-        if (modified) {
-            return newRanges.toArray(new long[][]{});
-        } else {
-            System.out.println("No ranges modified.");
-            return ranges;
-        }
-
     }
 
     public String getUrl() {
@@ -141,7 +86,7 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
 
     @Override
     public long length() {
-        return byteBuffer.array().length;
+        return rangeReader.getBytes().length;
     }
 
     @Override

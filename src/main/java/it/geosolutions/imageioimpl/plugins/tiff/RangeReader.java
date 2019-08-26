@@ -1,6 +1,6 @@
 package it.geosolutions.imageioimpl.plugins.tiff;
 
-import java.nio.ByteBuffer;
+import java.util.Collection;
 
 /**
  * @author joshfix
@@ -8,12 +8,14 @@ import java.nio.ByteBuffer;
  */
 public interface RangeReader {
 
-    int getFileSize(String url);
+    byte[] getBytes();
 
-    byte[] read(String url, long start, long end);
+    int getFileSize();
 
-    void read(ByteBuffer byteBuffer, String url, long start, long end);
+    int getHeaderSize();
 
-    void readAsync(ByteBuffer byteBuffer, String url, long[]... range);
+    void readAsync(long[]... ranges);
+
+    void readAsync(Collection<long[]> ranges);
 
 }

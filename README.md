@@ -22,8 +22,11 @@ the request on to TIFFImageReader's `read` method.
 
 [RangeReader](./src/main/java/it/geosolutions/imageioimpl/plugins/tiff/RangeReader.java) is a newly introduced interface. 
 This interface can be implemented by any library to execute asynchronous block reads.  Currently an HTTP implementation 
-is provided: [HttpRangeReader](./src/main/java/it/geosolutions/imageioimpl/plugins/tiff/HttpRangeReader.java).  This 
-interface should likely be expanded to handle collections and various other types of representations of ranges.
+is provided: [HttpRangeReader](./src/main/java/it/geosolutions/imageioimpl/plugins/tiff/HttpRangeReader.java).  The 
+HttpRangeReader class is also responsible for eagerly fetching the COG's header upon instantiation.  Currently, 
+it is statically coded to fetch the first 16KB (mimicking the default behavior of GDAL).  This should be changed to be 
+configurable in the future.  The class also contains logic to prevent re-reading data from supplied byte ranges if the 
+byte ranges fall inside of the header range that has already been read. 
 
 [CogImageInputStream](./src/main/java/it/geosolutions/imageioimpl/plugins/tiff/CogImageInputStream.java) is an interface 
 that defines a single method, `readRanges`, and accepts a 2D long array as a method parameter containing all of the 
@@ -34,11 +37,7 @@ I will likely provide S3, Azure, and Google Cloud implementations in the future.
  
 [HttpCogImageInputStream](./src/main/java/it/geosolutions/imageioimpl/plugins/tiff/HttpCogImageInputStream.java) is an 
 ImageInputStream implementation that uses the [HttpRangeReader](./src/main/java/it/geosolutions/imageioimpl/plugins/tiff/HttpRangeReader)  
-to perform asynchronous range requests and store the resultant data in a delegate MemoryCacheImageInputStream.  The 
-HttpCogImageInputStream class is also responsible for eagerly fetching the COG's header upon instantiation.  Currently, 
-it is statically coded to fetch the first 16KB (mimicking the default behavior of GDAL).  This should be changed to be 
-configurable in the future.  The class also contains logic to prevent re-reading data from supplied byte ranges if the 
-byte ranges fall inside of the header range that has already been read. 
+to perform asynchronous range requests and store the resultant data in a delegate MemoryCacheImageInputStream.  
  
 This project is still very much in the prototype stage and still needs better error handling, logging, tests, etc.  The 
 package name aligns with the imageio-ext TIFFImageReader to take advantage of protected class members.  There are still 
