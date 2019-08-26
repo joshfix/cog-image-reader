@@ -32,8 +32,8 @@ public class Test {
     static {
         int x = 000;
         int y = 000;
-        int width = 8000;
-        int height = 8000;
+        int width = 4000;
+        int height = 4000;
         param.setSourceRegion(new Rectangle(x, y, width, height));
     }
 

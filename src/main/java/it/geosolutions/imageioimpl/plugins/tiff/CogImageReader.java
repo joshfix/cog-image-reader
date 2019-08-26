@@ -61,8 +61,6 @@ public class CogImageReader extends TIFFImageReader {
 
         System.out.println("Reading tiles (" + minTileX + "," + minTileY + ") - (" + maxTileX + "," + maxTileY + ")");
 
-        boolean isAbortRequested = false;
-
         List<long[]> ranges = new ArrayList<>();
         int firstTileIndex = minTileY * tilesAcross + minTileX;
 
@@ -72,41 +70,73 @@ public class CogImageReader extends TIFFImageReader {
 
         // loops through each requested tile and determine if they byte positions are consecutive
         // builds long[][] array of all ranges needed to be requested
-        int band = -1;
-        for (int tileY = minTileY; tileY <= maxTileY; tileY++) {
-            for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
-                // The method abortRequested() is synchronized so check it only once per loop just before
-                // doing any actual decoding.
-                if (abortRequested()) {
-                    isAbortRequested = true;
-                    break;
+        boolean isAbortRequested = false;
+        if (planarConfiguration == BaselineTIFFTagSet.PLANAR_CONFIGURATION_PLANAR) {
+            for (int tileY = minTileY; tileY <= maxTileY; tileY++) {
+                for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
+                    for (int band = 0; band < numBands; band++) {
+                        // The method abortRequested() is synchronized
+                        // so check it only once per loop just before
+                        // doing any actual decoding.
+                        if (abortRequested()) {
+                            isAbortRequested = true;
+                            break;
+                        }
+
+                        int tileIndex = band * tilesAcross * tilesDown;
+
+                        long offset = getTileOrStripOffset(tileIndex);
+                        if (offset == rangeEnd + 1) {
+                            // this tile starts where the last one left off
+                            rangeEnd = offset + getTileOrStripByteCount(tileIndex) - 1;
+                        } else {
+                            // this tile is in a new position.  add the current range and start a new one.
+                            ranges.add(new long[]{rangeStart, rangeEnd});
+                            rangeStart = offset;
+                            rangeEnd = rangeStart + getTileOrStripByteCount(tileIndex) - 1;
+                        }
+                    }
+
+                    if (isAbortRequested) break;
                 }
 
-                // skip the first tile -- there is no previous tile to compare to
-                if (tileY == minTileY && tileX == minTileX) {
-                    continue;
-                }
-
-                int tileIndex = -1;
-                if (planarConfiguration == BaselineTIFFTagSet.PLANAR_CONFIGURATION_PLANAR) {
-                    tileIndex += band * tilesAcross * tilesDown;
-                } else {
-                    tileIndex = tileY * tilesAcross + tileX;
-                }
-
-                long offset = getTileOrStripOffset(tileIndex);
-                if (offset == rangeEnd + 1) {
-                    // this tile starts where the last one left off
-                    rangeEnd = offset + getTileOrStripByteCount(tileIndex) - 1;
-                } else {
-                    // this tile is in a new position.  add the current range and start a new one.
-                    ranges.add(new long[]{rangeStart, rangeEnd});
-                    rangeStart = offset;
-                    rangeEnd = rangeStart + getTileOrStripByteCount(tileIndex) - 1;
-                }
+                if (isAbortRequested) break;
             }
+        } else {
+            int band = -1;
+            for (int tileY = minTileY; tileY <= maxTileY; tileY++) {
+                for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
+                    // The method abortRequested() is synchronized
+                    // so check it only once per loop just before
+                    // doing any actual decoding.
+                    if (abortRequested()) {
+                        isAbortRequested = true;
+                        break;
+                    }
 
-            if (isAbortRequested) break;
+                    int tileIndex = tileY * tilesAcross + tileX;
+
+                    long offset = getTileOrStripOffset(tileIndex);
+                    if (offset == rangeEnd + 1) {
+                        // this tile starts where the last one left off
+                        rangeEnd = offset + getTileOrStripByteCount(tileIndex) - 1;
+                    } else {
+                        // this tile is in a new position.  add the current range and start a new one.
+                        ranges.add(new long[]{rangeStart, rangeEnd});
+                        rangeStart = offset;
+                        rangeEnd = rangeStart + getTileOrStripByteCount(tileIndex) - 1;
+                    }
+
+                }
+
+                if (isAbortRequested) break;
+            }
+        }
+
+        if (isAbortRequested) {
+            processReadAborted();
+        } else {
+            processImageComplete();
         }
 
         ranges.add(new long[]{rangeStart, rangeEnd});
