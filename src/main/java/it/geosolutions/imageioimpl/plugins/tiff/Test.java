@@ -27,12 +27,15 @@ public class Test {
     static List<Long> tiffTimes = new ArrayList<>();
     static ImageReadParam param = new ImageReadParam();
     static boolean saveFile = false;
+    static String cogImage = "http://even.rouault.free.fr/gtiff_test/S2A_MSIL1C_20170102T111442_N0204_R137_T30TXT_20170102T111441_TCI_cloudoptimized_2.tif";
+    //static String cogImage = "https://s3-us-west-2.amazonaws.com/landsat-pds/c1/L8/153/075/LC08_L1TP_153075_20190515_20190515_01_RT/LC08_L1TP_153075_20190515_20190515_01_RT_B2.TIF";
+    //static String cogImage = "http://even.rouault.free.fr/gtiff_test/S2A_MSIL1C_20170102T111442_N0204_R137_T30TXT_20170102T111441_TCI_cloudoptimized_512.tif";
 
     static {
         int x = 000;
         int y = 000;
-        int width = 2000;
-        int height = 3000;
+        int width = 8792;
+        int height = 8792;
 
         param.setSourceRegion(new Rectangle(x, y, width, height));
     }
@@ -75,7 +78,7 @@ public class Test {
 
     public static BufferedImage readTiff(ImageReadParam param) throws Exception {
         Instant tiffStart = Instant.now();
-        ImageInputStream urlStream = new URLImageInputStreamSpi().createInputStreamInstance(new URL("https://s3-us-west-2.amazonaws.com/landsat-pds/c1/L8/153/075/LC08_L1TP_153075_20190515_20190515_01_RT/LC08_L1TP_153075_20190515_20190515_01_RT_B2.TIF"));
+        ImageInputStream urlStream = new URLImageInputStreamSpi().createInputStreamInstance(new URL(cogImage));
         TIFFImageReader tiffReader = new TIFFImageReader(new TIFFImageReaderSpi());
         tiffReader.setInput(urlStream);
         BufferedImage tiffImage = tiffReader.read(0, param);
@@ -88,7 +91,7 @@ public class Test {
     }
 
     public static BufferedImage readCog(ImageReadParam param) throws Exception {
-        ImageInputStream cogStream = new HttpCogImageInputStream("https://s3-us-west-2.amazonaws.com/landsat-pds/c1/L8/153/075/LC08_L1TP_153075_20190515_20190515_01_RT/LC08_L1TP_153075_20190515_20190515_01_RT_B2.TIF");
+        ImageInputStream cogStream = new HttpCogImageInputStream(cogImage);
         Instant cogStart = Instant.now();
         CogImageReader reader = new CogImageReader(new CogImageReaderSpi());
         reader.setInput(cogStream);

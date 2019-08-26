@@ -34,6 +34,7 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
 
         // get the file size with a HEAD request
         fileSize = rangeReader.getFileSize(url);
+        System.out.println("File size: " + fileSize);
         byteBuffer = ByteBuffer.allocate(fileSize);
 
         // read the header
@@ -49,7 +50,7 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
         // dont' re-read what we've already read for the header
         ranges = reconcileRanges(ranges);
 
-        System.out.println("Reading " + ranges.length + " ranges.");
+        System.out.println("Submitting " + ranges.length + " range requests.");
         rangeReader.readAsync(byteBuffer, url, ranges);
         ByteOrder byteOrder = delegate.getByteOrder();
         long streamPos = 0;

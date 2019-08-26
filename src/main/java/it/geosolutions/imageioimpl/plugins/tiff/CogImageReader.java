@@ -55,6 +55,8 @@ public class CogImageReader extends TIFFImageReader {
         int maxTileX = TIFFImageWriter.XToTileX(srcRegion.x + srcRegion.width - 1, 0, tileOrStripWidth);
         int maxTileY = TIFFImageWriter.YToTileY(srcRegion.y + srcRegion.height - 1, 0, tileOrStripHeight);
 
+        System.out.println("Reading tiles (" + minTileX + "," + minTileY + ") - (" + maxTileX + "," + maxTileY + ")");
+
         boolean isAbortRequested = false;
 
         List<long[]> ranges = new ArrayList<>();
