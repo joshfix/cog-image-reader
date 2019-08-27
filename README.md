@@ -54,7 +54,7 @@ Reading 1000x1000 pixels from an offset of 2000, 2000:
 
 | Number of Requests | CogImageReader (ms) | TIFFImageReader (ms) | Delta (ms) |
 | ------------------ | -------------- | --------------- | ------ |
-|        10          |      1586      |       4961      |  3272  |
+|        10          |      1689      |       4961      |  3272  |
 |        50          |      1586      |       5305      |  3719  |
 
 Reading 2000x2000 pixels from an offset of 0, 0:
