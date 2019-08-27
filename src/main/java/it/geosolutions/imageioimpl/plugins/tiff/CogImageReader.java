@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * @author joshfix
@@ -61,12 +62,11 @@ public class CogImageReader extends TIFFImageReader {
 
         System.out.println("Reading tiles (" + minTileX + "," + minTileY + ") - (" + maxTileX + "," + maxTileY + ")");
 
-        List<long[]> ranges = new ArrayList<>();
         int firstTileIndex = minTileY * tilesAcross + minTileX;
+        long initialRangeStart = getTileOrStripOffset(firstTileIndex);
+        long initialRangeEnd = initialRangeStart + getTileOrStripByteCount(firstTileIndex) - 1;
 
-        long rangeStart = getTileOrStripOffset(firstTileIndex);
-        long rangeEnd = rangeStart + getTileOrStripByteCount(firstTileIndex) - 1;
-
+        RangeBuilder rangeBuilder = new RangeBuilder(initialRangeStart, initialRangeEnd);
 
         // loops through each requested tile and determine if they byte positions are consecutive
         // builds long[][] array of all ranges needed to be requested
@@ -75,26 +75,14 @@ public class CogImageReader extends TIFFImageReader {
             for (int tileY = minTileY; tileY <= maxTileY; tileY++) {
                 for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
                     for (int band = 0; band < numBands; band++) {
-                        // The method abortRequested() is synchronized
-                        // so check it only once per loop just before
-                        // doing any actual decoding.
-                        if (abortRequested()) {
-                            isAbortRequested = true;
-                            break;
+
+                        // skip the first tile as there is no previous tile to compare to
+                        if (tileY == minTileY && tileX == minTileX) {
+                            continue;
                         }
 
                         int tileIndex = band * tilesAcross * tilesDown;
-
-                        long offset = getTileOrStripOffset(tileIndex);
-                        if (offset == rangeEnd + 1) {
-                            // this tile starts where the last one left off
-                            rangeEnd = offset + getTileOrStripByteCount(tileIndex) - 1;
-                        } else {
-                            // this tile is in a new position.  add the current range and start a new one.
-                            ranges.add(new long[]{rangeStart, rangeEnd});
-                            rangeStart = offset;
-                            rangeEnd = rangeStart + getTileOrStripByteCount(tileIndex) - 1;
-                        }
+                        rangeBuilder.compare(getTileOrStripOffset(tileIndex), getTileOrStripByteCount(tileIndex));
                     }
 
                     if (isAbortRequested) break;
@@ -103,30 +91,16 @@ public class CogImageReader extends TIFFImageReader {
                 if (isAbortRequested) break;
             }
         } else {
-            int band = -1;
             for (int tileY = minTileY; tileY <= maxTileY; tileY++) {
                 for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
-                    // The method abortRequested() is synchronized
-                    // so check it only once per loop just before
-                    // doing any actual decoding.
-                    if (abortRequested()) {
-                        isAbortRequested = true;
-                        break;
+
+                    // skip the first tile as there is no previous tile to compare to
+                    if (tileY == minTileY && tileX == minTileX) {
+                        continue;
                     }
 
                     int tileIndex = tileY * tilesAcross + tileX;
-
-                    long offset = getTileOrStripOffset(tileIndex);
-                    if (offset == rangeEnd + 1) {
-                        // this tile starts where the last one left off
-                        rangeEnd = offset + getTileOrStripByteCount(tileIndex) - 1;
-                    } else {
-                        // this tile is in a new position.  add the current range and start a new one.
-                        ranges.add(new long[]{rangeStart, rangeEnd});
-                        rangeStart = offset;
-                        rangeEnd = rangeStart + getTileOrStripByteCount(tileIndex) - 1;
-                    }
-
+                    rangeBuilder.compare(getTileOrStripOffset(tileIndex), getTileOrStripByteCount(tileIndex));
                 }
 
                 if (isAbortRequested) break;
@@ -139,10 +113,8 @@ public class CogImageReader extends TIFFImageReader {
             processImageComplete();
         }
 
-        ranges.add(new long[]{rangeStart, rangeEnd});
-
         // read the ranges and cache them in the image input stream delegate
-        ((CogImageInputStream) stream).readRanges(ranges);
+        ((CogImageInputStream) stream).readRanges(rangeBuilder.getRanges());
 
         // At this point, the CogImageInputStream has fetched and cached all of the bytes from the requested tiles.
         // Now we proceed with the legacy TIFFImageReader code.
