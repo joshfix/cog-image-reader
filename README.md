@@ -46,8 +46,8 @@ CogImageReader.
 
 ### Performance
 To quickly benchmark performance between the CogImageReader and the TIFFImageReader, I averaged the amount of time it 
-took to to produce the final image with 10 and 50 consecutive requests. All tests used 
-https://s3-us-west-2.amazonaws.com/landsat-pds/c1/L8/153/075/LC08_L1TP_153075_20190515_20190515_01_RT/LC08_L1TP_153075_20190515_20190515_01_RT_B2.TIF 
+took to to produce the final image with 10 and 50 consecutive requests. All tests used [this Landsat 8 image](
+https://s3-us-west-2.amazonaws.com/landsat-pds/c1/L8/153/075/LC08_L1TP_153075_20190515_20190515_01_RT/LC08_L1TP_153075_20190515_20190515_01_RT_B2.TIF) 
 as the target image.
 
 Reading 1000x1000 pixels from an offset of 2000, 2000:
