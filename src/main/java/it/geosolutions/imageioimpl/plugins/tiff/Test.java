@@ -39,8 +39,8 @@ public class Test {
 
     public static void main(String... args) throws Exception {
 
-        headToHeadTest(10);
-        //readCog();
+        //headToHeadTest(10);
+        readCog();
         //readTiff();
 
     }
