@@ -30,10 +30,10 @@ public class Test {
     static String cogImageUrl = "https://s3-us-west-2.amazonaws.com/landsat-pds/c1/L8/153/075/LC08_L1TP_153075_20190515_20190515_01_RT/LC08_L1TP_153075_20190515_20190515_01_RT_B2.TIF";
 
     static {
-        int x = 2000;
-        int y = 2000;
-        int width = 1000;
-        int height = 1000;
+        int x = 000;
+        int y = 000;
+        int width = 2000;
+        int height = 2000;
         param.setSourceRegion(new Rectangle(x, y, width, height));
     }
 

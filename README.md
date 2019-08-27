@@ -44,6 +44,26 @@ package name aligns with the imageio-ext TIFFImageReader to take advantage of pr
 some private methods and variables in TIFFImageReader that require duplication of code and use of reflection in 
 CogImageReader.  
 
+### Performance
+To quickly benchmark performance between the CogImageReader and the TIFFImageReader, I averaged the amount of time it 
+took to to produce the final image with 10 and 50 consecutive requests. All tests used 
+https://s3-us-west-2.amazonaws.com/landsat-pds/c1/L8/153/075/LC08_L1TP_153075_20190515_20190515_01_RT/LC08_L1TP_153075_20190515_20190515_01_RT_B2.TIF 
+as the target image.
+
+Reading 1000x1000 pixels from an offset of 2000, 2000:
+
+| Number of Requests | CogImageReader (ms) | TIFFImageReader (ms) | Delta (ms) |
+| ------------------ | -------------- | --------------- | ------ |
+|        10          |      1586      |       4961      |  3272  |
+|        50          |      1586      |       5305      |  3719  |
+
+Reading 2000x2000 pixels from an offset of 0, 0:
+
+| Number of Requests | CogImageReader (ms) | TIFFImageReader (ms) | Delta (ms) |
+| ------------------ | -------------- | --------------- | ------ |
+|        10          |      1029      |       2927      |  1898  |
+|        50          |      1287      |       3418      |  2131  |
+
 ### Sample Debug Outputs
 * Reading an entire image.  Because all tiles are contiguous, only 1 range request is made.  The byte locations, as 
 calculated by CogImageReader, are modified by HttpCogImageInputStream as to not re-request data that was read in the 
