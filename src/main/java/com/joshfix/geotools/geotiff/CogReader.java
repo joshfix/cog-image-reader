@@ -37,7 +37,7 @@ package com.joshfix.geotools.geotiff;
 
 import it.geosolutions.imageio.maskband.DatasetLayout;
 import it.geosolutions.imageioimpl.plugins.tiff.CogImageReaderSpi;
-import it.geosolutions.imageioimpl.plugins.tiff.HttpCogImageInputStreamSpi;
+import it.geosolutions.imageioimpl.plugins.tiff.stream.HttpCogImageInputStreamSpi;
 import it.geosolutions.imageioimpl.plugins.tiff.TiffDatasetLayoutImpl;
 import it.geosolutions.jaiext.range.NoDataContainer;
 import org.geotools.coverage.Category;

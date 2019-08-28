@@ -48,7 +48,13 @@ public class HttpRangeReader implements RangeReader {
                 .build();
 
         // read the header
-        writeValue(0, read(0, headerSize));
+
+    }
+
+    public byte[] readHeader() {
+        byte[] headerBytes = read(0, headerSize);
+        writeValue(0, headerBytes);
+        return headerBytes;
     }
 
     @Override
@@ -167,7 +173,7 @@ public class HttpRangeReader implements RangeReader {
                 .GET()
                 .uri(uri)
                 .header("Accept", "*/*")
-                .header("Range", "bytes=" + range[0] + "-" + range[1])
+                .header("range", "bytes=" + range[0] + "-" + range[1])
                 .build();
     }
 

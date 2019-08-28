@@ -1,6 +1,7 @@
 package it.geosolutions.imageioimpl.plugins.tiff;
 
 import it.geosolutions.imageio.stream.input.spi.URLImageInputStreamSpi;
+import it.geosolutions.imageioimpl.plugins.tiff.stream.CachingHttpCogImageInputStream;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReadParam;
@@ -30,8 +31,8 @@ public class Test {
     static String cogImageUrl = "https://s3-us-west-2.amazonaws.com/landsat-pds/c1/L8/153/075/LC08_L1TP_153075_20190515_20190515_01_RT/LC08_L1TP_153075_20190515_20190515_01_RT_B2.TIF";
 
     static {
-        int x = 000;
-        int y = 000;
+        int x = 1000;
+        int y = 1000;
         int width = 2000;
         int height = 2000;
         param.setSourceRegion(new Rectangle(x, y, width, height));
@@ -41,6 +42,9 @@ public class Test {
 
         //headToHeadTest(10);
         readCog();
+        System.out.println("Read image once.  Reading again.");
+        readCog();
+
         //readTiff();
 
     }
@@ -88,7 +92,7 @@ public class Test {
     }
 
     public static BufferedImage readCog(ImageReadParam param) throws Exception {
-        ImageInputStream cogStream = new HttpCogImageInputStream(cogImageUrl);
+        ImageInputStream cogStream = new CachingHttpCogImageInputStream(cogImageUrl);
         Instant cogStart = Instant.now();
         CogImageReader reader = new CogImageReader(new CogImageReaderSpi());
         reader.setInput(cogStream);
@@ -100,8 +104,11 @@ public class Test {
         cogSum += duration;
         return cogImage;
     }
-
+static int count = 0;
     public static void display(BufferedImage bi) throws Exception {
+        if (count++ == 0) {
+            return;
+        }
         if (saveFile) {
             File outputfile = new File("example.png");
             ImageIO.write(bi, "png", outputfile);

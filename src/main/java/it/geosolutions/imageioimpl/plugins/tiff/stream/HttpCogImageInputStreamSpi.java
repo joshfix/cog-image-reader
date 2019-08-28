@@ -1,4 +1,4 @@
-package it.geosolutions.imageioimpl.plugins.tiff;
+package it.geosolutions.imageioimpl.plugins.tiff.stream;
 
 import javax.imageio.spi.ImageInputStreamSpi;
 import javax.imageio.spi.ServiceRegistry;
