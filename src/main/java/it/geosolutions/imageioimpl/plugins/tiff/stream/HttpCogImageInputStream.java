@@ -2,6 +2,7 @@ package it.geosolutions.imageioimpl.plugins.tiff.stream;
 
 import it.geosolutions.imageioimpl.plugins.tiff.CogTileInfo;
 import it.geosolutions.imageioimpl.plugins.tiff.HttpRangeReader;
+import it.geosolutions.imageioimpl.plugins.tiff.RangeBuilder;
 
 import javax.imageio.stream.IIOByteBuffer;
 import javax.imageio.stream.ImageInputStream;
@@ -18,8 +19,10 @@ import java.nio.ByteOrder;
  */
 public class HttpCogImageInputStream implements ImageInputStream, CogImageInputStream {
 
+    protected int headerByteLength = 16384;
+
     protected URI uri;
-    protected CogTileInfo cogTileInfo;
+    protected CogTileInfo cogTileInfo = new CogTileInfo();
     protected HttpRangeReader rangeReader;
     protected MemoryCacheImageInputStream delegate;
 
@@ -34,7 +37,7 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
     public HttpCogImageInputStream(URI uri) {
         this.uri = uri;
         rangeReader = new HttpRangeReader(uri);
-        rangeReader.readHeader();
+        rangeReader.readHeader(headerByteLength);
         // wrap the result in a MemoryCacheInputStream
         delegate = new MemoryCacheImageInputStream(new ByteArrayInputStream(rangeReader.getBytes()));
     }
@@ -45,12 +48,26 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
     }
 
     @Override
-    public void readRanges(CogTileInfo cogTileInfo) {
-        this.cogTileInfo = cogTileInfo;
+    public void setHeaderByteLength(int headerByteLength) {
+        this.headerByteLength = headerByteLength;
+    }
+
+    @Override
+    public void readRanges() {
         // read data with the RangeReader and set the byte order and pointer on the new input stream
-        long[][] ranges = cogTileInfo.getContiguousRanges().toArray(new long[][]{});
+        long firstTileOffset = cogTileInfo.getFirstTileOffset();
+        long firstTileByteLength = cogTileInfo.getFirstTileByteLength();
+        RangeBuilder rangeBuilder = new RangeBuilder(firstTileOffset, firstTileOffset +firstTileByteLength);
+
+        cogTileInfo.getTileRanges().forEach((tileIndex, tileRange) ->
+                rangeBuilder.addTileRange(tileRange.getStart(), tileRange.getByteLength()));
+
+        // read all of the ranges asynchronously
+        long[][] ranges = rangeBuilder.getRanges().toArray(new long[][]{});
         System.out.println("Submitting " + ranges.length + " range request(s)");
         rangeReader.readAsync(ranges);
+
+        // obtain the byte order and stream position from the existing delegate
         ByteOrder byteOrder = delegate.getByteOrder();
         long streamPos = 0;
         try {
@@ -58,7 +75,11 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        // create a new delegate with the newly acquired bytes
         delegate = new MemoryCacheImageInputStream(new ByteArrayInputStream(rangeReader.getBytes()));
+
+        // set the byte order and stream position
         delegate.setByteOrder(byteOrder);
         try {
             delegate.seek(streamPos);

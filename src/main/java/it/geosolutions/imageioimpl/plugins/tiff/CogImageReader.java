@@ -22,6 +22,7 @@ public class CogImageReader extends TIFFImageReader {
         super(originatingProvider);
     }
 
+
     @Override
     public BufferedImage read(int imageIndex, ImageReadParam param) throws IOException {
         // if the image input stream isn't a CogImageInputStream, skip all this nonsense and just use the original code
@@ -60,70 +61,33 @@ public class CogImageReader extends TIFFImageReader {
 
         System.out.println("Reading tiles (" + minTileX + "," + minTileY + ") - (" + maxTileX + "," + maxTileY + ")");
 
-        int firstTileIndex = minTileY * tilesAcross + minTileX;
-        long initialRangeStart = getTileOrStripOffset(firstTileIndex);
-        long initialRangeEnd = initialRangeStart + getTileOrStripByteCount(firstTileIndex) - 1;
-
-        RangeBuilder rangeBuilder = new RangeBuilder(initialRangeStart, initialRangeEnd);
         CogTileInfo cogTileInfo = ((CogImageInputStream)stream).getCogTileInfo();
 
-        // loops through each requested tile and determine if they byte positions are consecutive
-        // builds long[][] array of all ranges needed to be requested
-        boolean isAbortRequested = false;
+        // loops through each requested tile and complies information about each tile offset and byte length
         if (planarConfiguration == BaselineTIFFTagSet.PLANAR_CONFIGURATION_PLANAR) {
             for (int tileY = minTileY; tileY <= maxTileY; tileY++) {
                 for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
                     for (int band = 0; band < numBands; band++) {
-
                         int tileIndex = band * tilesAcross * tilesDown;
                         long offset = getTileOrStripOffset(tileIndex);
                         long byteLength = getTileOrStripByteCount(tileIndex);
                         cogTileInfo.addTileRange(tileIndex, offset, byteLength);
-
-                        // skip the first tile as there is no previous tile to compare to
-                        if (tileY == minTileY && tileX == minTileX) {
-                            continue;
-                        }
-
-                        rangeBuilder.compare(offset, byteLength);
                     }
-
-                    if (isAbortRequested) break;
                 }
-
-                if (isAbortRequested) break;
             }
         } else {
             for (int tileY = minTileY; tileY <= maxTileY; tileY++) {
                 for (int tileX = minTileX; tileX <= maxTileX; tileX++) {
-
                     int tileIndex = tileY * tilesAcross + tileX;
                     long offset = getTileOrStripOffset(tileIndex);
                     long byteLength = getTileOrStripByteCount(tileIndex);
                     cogTileInfo.addTileRange(tileIndex, offset, byteLength);
-
-                    // skip the first tile as there is no previous tile to compare to
-                    if (tileY == minTileY && tileX == minTileX) {
-                        continue;
-                    }
-
-                    rangeBuilder.compare(offset, byteLength);
                 }
-
-                if (isAbortRequested) break;
             }
         }
 
-        if (isAbortRequested) {
-            processReadAborted();
-        } else {
-            processImageComplete();
-        }
-
-        cogTileInfo.setContiguousRanges(rangeBuilder.getRanges());
-
         // read the ranges and cache them in the image input stream delegate
-        ((CogImageInputStream) stream).readRanges(cogTileInfo);
+        ((CogImageInputStream) stream).readRanges();
 
         // At this point, the CogImageInputStream has fetched and cached all of the bytes from the requested tiles.
         // Now we proceed with the legacy TIFFImageReader code.

@@ -1,1 +1,2 @@
 it.geosolutions.imageioimpl.plugins.tiff.stream.HttpCogImageInputStreamSpi
+it.geosolutions.imageioimpl.plugins.tiff.stream.CachingHttpCogImageInputStreamSpi

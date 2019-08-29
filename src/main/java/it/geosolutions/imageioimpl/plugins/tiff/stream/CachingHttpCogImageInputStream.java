@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * @author joshfix
@@ -16,11 +17,13 @@ import java.util.Arrays;
  */
 public class CachingHttpCogImageInputStream extends ImageInputStreamImpl implements CogImageInputStream {
 
-    protected long length;
+    protected int headerByteLength = 16384;
+
     protected URI uri;
     protected HttpRangeReader rangeReader;
     protected CogTileInfo cogTileInfo;
-    protected int headerSize = 16384;
+    protected CacheEntryKey headerKey;
+
     private final static int HEADER_TILE_INDEX = -100;
 
     public CachingHttpCogImageInputStream(String url) {
@@ -34,19 +37,20 @@ public class CachingHttpCogImageInputStream extends ImageInputStreamImpl impleme
     public CachingHttpCogImageInputStream(URI uri) {
         this.uri = uri;
 
+        headerKey = new CacheEntryKey(uri.toString(), HEADER_TILE_INDEX);
+
         cogTileInfo = new CogTileInfo();
         rangeReader = new HttpRangeReader(uri);
-        CacheEntryKey headerKey = new CacheEntryKey(uri.toString(), HEADER_TILE_INDEX);
+
+        // determine if the header has already been cached
         if (!CacheManagement.DEFAULT.keyExists(headerKey)) {
-            CacheManagement.DEFAULT.cacheTile(headerKey, rangeReader.readHeader());
-            cogTileInfo.addTileRange(HEADER_TILE_INDEX, 0, headerSize);
+            CacheManagement.DEFAULT.cacheTile(headerKey, rangeReader.readHeader(headerByteLength));
+            cogTileInfo.addTileRange(HEADER_TILE_INDEX, 0, headerByteLength);
         } else {
             byte[] headerBytes = CacheManagement.DEFAULT.getTile(headerKey);
-            cogTileInfo.addTileRange(HEADER_TILE_INDEX, 0, headerBytes.length);
+            headerByteLength = headerBytes.length;
+            cogTileInfo.addTileRange(HEADER_TILE_INDEX, 0, headerByteLength);
         }
-
-
-        this.length = rangeReader.getFileSize();
     }
 
     public CogTileInfo getCogTileInfo() {
@@ -54,71 +58,93 @@ public class CachingHttpCogImageInputStream extends ImageInputStreamImpl impleme
     }
 
     @Override
-    public void readRanges(CogTileInfo cogTileInfo) {
-        this.cogTileInfo = cogTileInfo;
+    public void setHeaderByteLength(int headerByteLength) {
+        this.headerByteLength = headerByteLength;
+    }
 
+    /**
+     * TIFFImageReader will read and decode the requested region of the GeoTIFF tile by tile.  Because of this, we will
+     * not arbitrarily store fixed-length byte chunks in cache, but instead create a cache entry for all the bytes for
+     * each tile.
+     *
+     * The first step is to loop through the tile ranges from CogTileInfo and determine which tiles are already cached.
+     * Tile ranges that are not in cache are submitted to RangeBuilder to build contiguous ranges to be read via HTTP.
+     *
+     * Once the contiguous ranges have been read, we obtain the full image-length byte array from the RangeReader.  Then
+     * loop through each of the requested tile ranges from CogTileInfo and cache the bytes.
+     *
+     * There are likely lots of optimizations to be made in here.
+     */
+    @Override
+    public void readRanges() {
         long firstTileOffset = cogTileInfo.getFirstTileOffset();
-        CogTileInfo.TileRange firstTileRange = cogTileInfo.getTileRange(firstTileOffset);
+        long firstTileByteLength = cogTileInfo.getFirstTileByteLength();
 
-        RangeBuilder rangeBuilder = new RangeBuilder(firstTileOffset, firstTileOffset + firstTileRange.getByteLength());
+        // TODO: is this worth it?  or should we just leave the header alone?
+        if (firstTileOffset < headerByteLength) {
+            byte[] headerBytes = CacheManagement.DEFAULT.getTile(headerKey);
+            byte[] newHeaderBytes = Arrays.copyOf(headerBytes, (int)(firstTileOffset - 1));
+            CacheManagement.DEFAULT.cacheTile(headerKey, newHeaderBytes);
+        }
 
+        // instantiate the range builder
+        RangeBuilder rangeBuilder = new RangeBuilder(firstTileOffset, firstTileOffset + firstTileByteLength);
+
+        // determine which requested tiles are not in cache and build the required ranges that need to be read (if any)
         cogTileInfo.getTileRanges().forEach((tileIndex, tileRange) -> {
             CacheEntryKey key = new CacheEntryKey(uri.toString(), tileIndex);
             if (!CacheManagement.DEFAULT.keyExists(key)) {
-                rangeBuilder.compare(tileRange.getStart(), tileRange.getByteLength());
+                rangeBuilder.addTileRange(tileRange.getStart(), tileRange.getByteLength());
             }
         });
 
-        cogTileInfo.setContiguousRanges(rangeBuilder.getRanges());
         // read data with the RangeReader and set the byte order and pointer on the new input stream
-        long[][] ranges = rangeBuilder.getRanges().toArray(new long[][]{});
-        if (ranges.length == 1) {
+        List<long[]> ranges = rangeBuilder.getRanges();
+        if (ranges.size() == 1) {
             return;
         }
 
-        System.out.println("Submitting " + ranges.length + " range request(s)");
+        // read all they byte ranges for tiles that are not in cache
+        System.out.println("Submitting " + ranges.size() + " range request(s)");
         rangeReader.readAsync(ranges);
 
-        byte[] cogBytes = rangeReader.getBytes();
-
+        // cache the bytes for each tile
         cogTileInfo.getTileRanges().forEach((tileIndex, tileRange) -> {
             CacheEntryKey key = new CacheEntryKey(uri.toString(), tileIndex);
-            if (!CacheManagement.DEFAULT.keyExists(key)) {
-                byte[] tileBytes = Arrays.copyOfRange(cogBytes, (int) tileRange.getStart(), (int) (tileRange.getEnd()));
-                CacheManagement.DEFAULT.cacheTile(key, tileBytes);
-            }
+            byte[] tileBytes =
+                    Arrays.copyOfRange(rangeReader.getBytes(), (int) tileRange.getStart(), (int) (tileRange.getEnd()));
+            CacheManagement.DEFAULT.cacheTile(key, tileBytes);
         });
 
     }
 
     @Override
     public int read() throws IOException {
-        // TODO: implement
+        // TODO: implement, even though this never seems to get called by TIFFImageReader
         //byte rawValue = readRawValue();
         //return Byte.toUnsignedInt(rawValue);
-        System.out.println("READ");
         return 0;
     }
 
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
-        int readRemaining = len;
+        // based on the stream position, determine which tile we are in and fetch the corresponding TileRange
         CogTileInfo.TileRange tileRange = cogTileInfo.getTileRange(streamPos);
-        CacheEntryKey key = new CacheEntryKey(uri.toString(), getTileIndex());
+
+        // get the bytes from cache for the tile
+        CacheEntryKey key = new CacheEntryKey(uri.toString(), tileRange.getIndex());
         byte[] tileBytes = CacheManagement.DEFAULT.getTile(key);
 
+        // translate the overall stream position to the stream position of the fetched tile
         int relativeStreamPos = (int) (streamPos - tileRange.getStart() + off);
-        byte[] requestedBytes = Arrays.copyOfRange(tileBytes, relativeStreamPos, relativeStreamPos + len);
 
+        // copy the bytes from the fetched tile into the destination byte array
         for (long i = 0; i < len; i++) {
-            b[(int)i] = requestedBytes[(int)i];
+            b[(int) i] = tileBytes[(int)(relativeStreamPos + i)];
         }
+
         streamPos += len;
         return len;
-    }
-
-    private int getTileIndex() {
-        return cogTileInfo.getTileIndex(streamPos);
     }
 
 }

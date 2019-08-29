@@ -38,43 +38,12 @@
         <dependency>
             <groupId>org.ehcache</groupId>
             <artifactId>ehcache</artifactId>
-            <version>3.8.0</version>
+            <version>3.4.0</version>
         </dependency>
 
     </dependencies>
 
     <repositories>
-        <repository>
-            <id>boundless</id>
-            <name>Boundless Maven Repository</name>
-            <url>https://repo.boundlessgeo.com/artifactory/main</url>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
-        <repository>
-            <id>boundless-release</id>
-            <name>Boundless Maven Repository</name>
-            <url>https://repo.boundlessgeo.com/artifactory/release/</url>
-        </repository>
-        <repository>
-            <id>boundless-server</id>
-            <name>Boundless Secure Repository</name>
-            <url>https://repo.boundlessgeo.com/artifactory/boundless-server/</url>
-        </repository>
-        <repository>
-            <id>boundless-snapshot</id>
-            <name>Boundless Maven Repository</name>
-            <url>https://repo.boundlessgeo.com/artifactory/snapshot/</url>
-        </repository>
-        <repository>
-            <id>boundless_ext</id>
-            <name>Boundless Maven Repository</name>
-            <url>https://repo.boundlessgeo.com/artifactory/ext-release-local/</url>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
         <repository>
             <id>central</id>
             <name>Central Maven Repository</name>
@@ -102,16 +71,6 @@
     </repositories>
 
     <build>
-        <!--
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-
-        </plugins>
-        -->
-
         <plugins>
 
             <plugin>

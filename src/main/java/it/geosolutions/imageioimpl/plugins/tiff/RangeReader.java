@@ -12,8 +12,6 @@ public interface RangeReader {
 
     int getFileSize();
 
-    int getHeaderSize();
-
     void readAsync(long[]... ranges);
 
     void readAsync(Collection<long[]> ranges);

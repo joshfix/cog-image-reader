@@ -8,7 +8,8 @@ import it.geosolutions.imageioimpl.plugins.tiff.CogTileInfo;
  */
 public interface CogImageInputStream {
 
-    void readRanges(CogTileInfo cogTileInfo);
+    void readRanges();
     CogTileInfo getCogTileInfo();
+    void setHeaderByteLength(int headerByteLength);
 
 }

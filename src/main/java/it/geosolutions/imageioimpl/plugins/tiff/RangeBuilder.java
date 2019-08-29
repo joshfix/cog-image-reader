@@ -19,7 +19,7 @@ public class RangeBuilder {
         this.currentRangeEnd = currentRangeEnd;
     }
 
-    public void compare(long offset, long tileOrStripByteCount) {
+    public void addTileRange(long offset, long tileOrStripByteCount) {
         if (offset == currentRangeEnd + 1) {
             // this tile starts where the last one left off
             currentRangeEnd = offset + tileOrStripByteCount - 1;

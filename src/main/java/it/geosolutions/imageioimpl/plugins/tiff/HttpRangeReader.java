@@ -27,7 +27,7 @@ public class HttpRangeReader implements RangeReader {
 
     protected int timeout = 5;
     protected int fileSize = -1;
-    protected int headerSize = 16384;
+    protected int headerByteLength = 16384;
 
     public static final String CONTENT_RANGE_HEADER = "content-range";
 
@@ -40,26 +40,23 @@ public class HttpRangeReader implements RangeReader {
     }
 
     public HttpRangeReader(URI uri) {
-        this.uri= uri;
+        this.uri = uri;
         client = HttpClient.newBuilder()
                 .version(HTTP_2)
                 .connectTimeout(Duration.ofSeconds(timeout))
                 .followRedirects(HttpClient.Redirect.NORMAL)
                 .build();
-
-        // read the header
-
     }
 
-    public byte[] readHeader() {
-        byte[] headerBytes = read(0, headerSize);
+    public byte[] readHeader(int headerByteLength) {
+        this.headerByteLength = headerByteLength;
+        byte[] headerBytes = read(0, headerByteLength);
         writeValue(0, headerBytes);
         return headerBytes;
     }
 
-    @Override
-    public int getHeaderSize() {
-        return headerSize;
+    public void setHeaderByteLength(int headerByteLength) {
+        this.headerByteLength = headerByteLength;
     }
 
     @Override
@@ -138,19 +135,19 @@ public class HttpRangeReader implements RangeReader {
         boolean modified = false;
         List<long[]> newRanges = new ArrayList<>();
         for (int i = 0; i < ranges.length; i++) {
-            if (ranges[i][0] < headerSize) {
+            if (ranges[i][0] < headerByteLength) {
                 // this range starts inside of what we already read for the header
                 modified = true;
-                if (ranges[i][1] < headerSize) {
+                if (ranges[i][1] < headerByteLength) {
                     // this range is fully inside the header which was already read; discard this range
                     System.out.println("Removed range " + ranges[i][0] + "-" + ranges[i][1] + " as it lies fully within"
                             + " the data already read in the header request");
                 } else {
                     // this range starts inside the header range, but ends outside of it.
                     // add a new range that starts at the end of the header range
-                    newRanges.add(new long[]{headerSize + 1, ranges[i][1]});
+                    newRanges.add(new long[]{headerByteLength + 1, ranges[i][1]});
                     System.out.println("Modified range " + ranges[i][0] + "-" + ranges[i][1]
-                            + " to " + (headerSize + 1) + "-" + ranges[i][1] + " as it overlaps with data previously"
+                            + " to " + (headerByteLength + 1) + "-" + ranges[i][1] + " as it overlaps with data previously"
                             + " read in the header request");
                 }
             } else {
