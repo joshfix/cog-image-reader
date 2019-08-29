@@ -22,9 +22,7 @@ public class CachingHttpCogImageInputStream extends ImageInputStreamImpl impleme
     protected URI uri;
     protected HttpRangeReader rangeReader;
     protected CogTileInfo cogTileInfo;
-    protected CacheEntryKey headerKey;
-
-    private final static int HEADER_TILE_INDEX = -100;
+    private static final int HEADER_TILE_INDEX = -100;
 
     public CachingHttpCogImageInputStream(String url) {
         this(URI.create(url));
@@ -37,18 +35,18 @@ public class CachingHttpCogImageInputStream extends ImageInputStreamImpl impleme
     public CachingHttpCogImageInputStream(URI uri) {
         this.uri = uri;
 
-        headerKey = new CacheEntryKey(uri.toString(), HEADER_TILE_INDEX);
-
         cogTileInfo = new CogTileInfo();
         rangeReader = new HttpRangeReader(uri);
 
         // determine if the header has already been cached
-        if (!CacheManagement.DEFAULT.keyExists(headerKey)) {
-            CacheManagement.DEFAULT.cacheTile(headerKey, rangeReader.readHeader(headerByteLength));
+        if (!CacheManagement.DEFAULT.headerExists(uri.toString())) {
+            CacheManagement.DEFAULT.cacheHeader(uri.toString(), rangeReader.readHeader(headerByteLength));
+            CacheManagement.DEFAULT.cacheFilesize(uri.toString(), rangeReader.getFilesize());
             cogTileInfo.addTileRange(HEADER_TILE_INDEX, 0, headerByteLength);
         } else {
-            byte[] headerBytes = CacheManagement.DEFAULT.getTile(headerKey);
+            byte[] headerBytes = CacheManagement.DEFAULT.getHeader(uri.toString());
             headerByteLength = headerBytes.length;
+            rangeReader.setFilesize(CacheManagement.DEFAULT.getFilesize(uri.toString()));
             cogTileInfo.addTileRange(HEADER_TILE_INDEX, 0, headerByteLength);
         }
     }
@@ -66,13 +64,13 @@ public class CachingHttpCogImageInputStream extends ImageInputStreamImpl impleme
      * TIFFImageReader will read and decode the requested region of the GeoTIFF tile by tile.  Because of this, we will
      * not arbitrarily store fixed-length byte chunks in cache, but instead create a cache entry for all the bytes for
      * each tile.
-     *
+     * <p>
      * The first step is to loop through the tile ranges from CogTileInfo and determine which tiles are already cached.
      * Tile ranges that are not in cache are submitted to RangeBuilder to build contiguous ranges to be read via HTTP.
-     *
+     * <p>
      * Once the contiguous ranges have been read, we obtain the full image-length byte array from the RangeReader.  Then
      * loop through each of the requested tile ranges from CogTileInfo and cache the bytes.
-     *
+     * <p>
      * There are likely lots of optimizations to be made in here.
      */
     @Override
@@ -82,9 +80,9 @@ public class CachingHttpCogImageInputStream extends ImageInputStreamImpl impleme
 
         // TODO: is this worth it?  or should we just leave the header alone?
         if (firstTileOffset < headerByteLength) {
-            byte[] headerBytes = CacheManagement.DEFAULT.getTile(headerKey);
-            byte[] newHeaderBytes = Arrays.copyOf(headerBytes, (int)(firstTileOffset - 1));
-            CacheManagement.DEFAULT.cacheTile(headerKey, newHeaderBytes);
+            byte[] headerBytes = CacheManagement.DEFAULT.getHeader(uri.toString());
+            byte[] newHeaderBytes = Arrays.copyOf(headerBytes, (int) (firstTileOffset - 1));
+            CacheManagement.DEFAULT.cacheHeader(uri.toString(), newHeaderBytes);
         }
 
         // instantiate the range builder
@@ -92,7 +90,7 @@ public class CachingHttpCogImageInputStream extends ImageInputStreamImpl impleme
 
         // determine which requested tiles are not in cache and build the required ranges that need to be read (if any)
         cogTileInfo.getTileRanges().forEach((tileIndex, tileRange) -> {
-            CacheEntryKey key = new CacheEntryKey(uri.toString(), tileIndex);
+            TileCacheEntryKey key = new TileCacheEntryKey(uri.toString(), tileIndex);
             if (!CacheManagement.DEFAULT.keyExists(key)) {
                 rangeBuilder.addTileRange(tileRange.getStart(), tileRange.getByteLength());
             }
@@ -110,7 +108,7 @@ public class CachingHttpCogImageInputStream extends ImageInputStreamImpl impleme
 
         // cache the bytes for each tile
         cogTileInfo.getTileRanges().forEach((tileIndex, tileRange) -> {
-            CacheEntryKey key = new CacheEntryKey(uri.toString(), tileIndex);
+            TileCacheEntryKey key = new TileCacheEntryKey(uri.toString(), tileIndex);
             byte[] tileBytes =
                     Arrays.copyOfRange(rangeReader.getBytes(), (int) tileRange.getStart(), (int) (tileRange.getEnd()));
             CacheManagement.DEFAULT.cacheTile(key, tileBytes);
@@ -131,16 +129,32 @@ public class CachingHttpCogImageInputStream extends ImageInputStreamImpl impleme
         // based on the stream position, determine which tile we are in and fetch the corresponding TileRange
         CogTileInfo.TileRange tileRange = cogTileInfo.getTileRange(streamPos);
 
-        // get the bytes from cache for the tile
-        CacheEntryKey key = new CacheEntryKey(uri.toString(), tileRange.getIndex());
-        byte[] tileBytes = CacheManagement.DEFAULT.getTile(key);
+        // get the bytes from cache for the tile. need to determine if we're reading from the header or a tile.
+        byte[] bytes;
+        switch (tileRange.getIndex()) {
+            case HEADER_TILE_INDEX:
+                bytes = CacheManagement.DEFAULT.getHeader(uri.toString());
+                break;
+            default:
+                TileCacheEntryKey key = new TileCacheEntryKey(uri.toString(), tileRange.getIndex());
+                bytes = CacheManagement.DEFAULT.getTile(key);
+        }
 
         // translate the overall stream position to the stream position of the fetched tile
         int relativeStreamPos = (int) (streamPos - tileRange.getStart() + off);
 
         // copy the bytes from the fetched tile into the destination byte array
         for (long i = 0; i < len; i++) {
-            b[(int) i] = tileBytes[(int)(relativeStreamPos + i)];
+            try {
+                b[(int) i] = bytes[(int) (relativeStreamPos + i)];
+            } catch (Exception e) {
+                System.out.println("Error copying bytes. requested offset: " + off
+                        + " - requested length: " + len
+                        + " - relativeStreamPos: " + relativeStreamPos
+                        + " - streamPos: " + streamPos
+                        + " - tile range start: " + tileRange.getStart()
+                        + " - tile range length: " + tileRange.getByteLength());
+            }
         }
 
         streamPos += len;

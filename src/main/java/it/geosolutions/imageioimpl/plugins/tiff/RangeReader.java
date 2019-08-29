@@ -10,7 +10,7 @@ public interface RangeReader {
 
     byte[] getBytes();
 
-    int getFileSize();
+    int getFilesize();
 
     void readAsync(long[]... ranges);
 

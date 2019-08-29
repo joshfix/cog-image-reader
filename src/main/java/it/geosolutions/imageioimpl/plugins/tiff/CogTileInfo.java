@@ -17,7 +17,6 @@ public class CogTileInfo {
     protected long firstTileOffset = Long.MAX_VALUE;
     protected long firstTileByteLength;
     protected Map<Integer, TileRange> tileRanges = new HashMap<>();
-    //protected List<long[]> contiguousRanges = new ArrayList<>();
 
     public void addTileRange(int tileIndex, long offset, long byteLength) {
         if (offset < firstTileOffset && offset > 0) {
@@ -47,6 +46,9 @@ public class CogTileInfo {
     }
 
     public TileRange getTileRange(long offset) {
+        //if (offset < headerSize) {
+        //    return new TileRange(-1, 0, headerSize);
+        //}
         for (TileRange tileRange : tileRanges.values()) {
             if (offset >= tileRange.getStart() && offset < tileRange.getEnd()) {
                 return tileRange;
@@ -63,19 +65,7 @@ public class CogTileInfo {
         }
         return -1;
     }
-/*
-    public void addContiguousRange(long[] range) {
-        contiguousRanges.add(range);
-    }
 
-    public void setContiguousRanges(List<long[]> contiguousRanges) {
-        this.contiguousRanges = contiguousRanges;
-    }
-
-    public List<long[]> getContiguousRanges() {
-        return contiguousRanges;
-    }
-*/
     public static class TileRange {
 
         private final long start;

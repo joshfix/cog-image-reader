@@ -28,11 +28,13 @@ import org.geotools.util.logging.Logging;
 import java.util.logging.Logger;
 
 /** Very basic EhCache handling */
-public enum CacheManagement {
+public enum CacheManagement implements CogTileCacheProvider {
 
     DEFAULT;
 
-    public static final String DEFAULT_CACHE = "default_cache";
+    public static final String TILE_CACHE = "tile_cache";
+    public static final String HEADER_CACHE = "header_cache";
+    public static final String FILESIZE_CACHE = "filesize_cache";
     private CacheManager manager;
     private CacheConfig config;
 
@@ -51,53 +53,19 @@ public enum CacheManagement {
         manager.init();
 
         CacheConfiguration cacheConfiguration = CacheConfigurationBuilder
-                .newCacheConfigurationBuilder(CacheEntryKey.class, byte[].class, ResourcePoolsBuilder.heap(1000))
+                .newCacheConfigurationBuilder(TileCacheEntryKey.class, byte[].class, ResourcePoolsBuilder.heap(1000))
                 .build();
 
-        manager.createCache(DEFAULT_CACHE, cacheConfiguration);
+        manager.createCache(TILE_CACHE, cacheConfiguration);
 
-        /*
-        Configuration cacheConfig = null;
+        manager.createCache(HEADER_CACHE, CacheConfigurationBuilder
+                .newCacheConfigurationBuilder(String.class, byte[].class, ResourcePoolsBuilder.heap(1000))
+                .build());
 
-        if (cacheConfig == null) {
-            cacheConfig = new Configuration();
-            cacheConfig.setMaxBytesLocalDisk((long) config.getDiskCacheSize());
-            cacheConfig.setMaxBytesLocalHeap((long) config.getHeapSize());
+        manager.createCache(FILESIZE_CACHE, CacheConfigurationBuilder
+                .newCacheConfigurationBuilder(String.class, Integer.class, ResourcePoolsBuilder.heap(1000))
+                .build());
 
-            if (config.isUseDiskCache()) {
-                DiskStoreConfiguration diskConfig = new DiskStoreConfiguration();
-                diskConfig.setPath(config.getCacheDirectory().toAbsolutePath().toString());
-                cacheConfig.diskStore(diskConfig);
-            }
-        }
-        if (cacheConfig.getDefaultCacheConfiguration() == null) {
-            CacheConfiguration defaultCacheConfiguration =
-                    new CacheConfiguration()
-                            .persistence(
-                                    new PersistenceConfiguration()
-                                            .strategy(
-                                                    PersistenceConfiguration.Strategy
-                                                            .LOCALTEMPSWAP))
-                            .timeToIdleSeconds(config.getTimeToIdle())
-                            .timeToLiveSeconds(config.getTimeToLive());
-
-            defaultCacheConfiguration.setMaxBytesLocalDisk((long) config.getDiskCacheSize());
-            defaultCacheConfiguration.setMaxBytesLocalHeap((long) config.getHeapSize());
-
-            cacheConfig.defaultCache(defaultCacheConfiguration);
-        }
-
-        // Use CacheManager.create() instead of new CacheManager(config) to avoid
-        // "Another unnamed cache manager already exists..." exception
-        CacheManager manager = CacheManager.create(cacheConfig);
-        if (removeCacheIfExists && manager.cacheExists(DEFAULT_CACHE)) {
-            manager.removeCache(DEFAULT_CACHE);
-            logger().info("Re-creating cache " + DEFAULT_CACHE);
-        }
-        if (!manager.cacheExists(DEFAULT_CACHE)) {
-            manager.addCache(DEFAULT_CACHE);
-        }
-*/
         return manager;
     }
 
@@ -107,20 +75,54 @@ public enum CacheManagement {
         return Logging.getLogger("org.geotools.s3.cache.CacheManagement");
     }
 
-    private Cache<CacheEntryKey, byte[]> getCache() {
-        return manager.getCache(DEFAULT_CACHE, CacheEntryKey.class, byte[].class);
+    private Cache<TileCacheEntryKey, byte[]> getTileCache() {
+        return manager.getCache(TILE_CACHE, TileCacheEntryKey.class, byte[].class);
     }
 
-    public byte[] getTile(CacheEntryKey key) {
-        return getCache().get(key);
+    private Cache<String, byte[]> getHeaderCache() {
+        return manager.getCache(HEADER_CACHE, String.class, byte[].class);
     }
 
-    public void cacheTile(CacheEntryKey key, byte[] tileBytes) {
-        getCache().put(key, tileBytes);
+    private Cache<String, Integer> getFilesizeCache() {
+        return manager.getCache(FILESIZE_CACHE, String.class, Integer.class);
     }
 
-    public boolean keyExists(CacheEntryKey key) {
-        return getCache().containsKey(key);
+    @Override
+    public byte[] getTile(TileCacheEntryKey key) {
+        return getTileCache().get(key);
+    }
+
+    @Override
+    public void cacheTile(TileCacheEntryKey key, byte[] tileBytes) {
+        getTileCache().put(key, tileBytes);
+    }
+
+    @Override
+    public boolean keyExists(TileCacheEntryKey key) {
+        return getTileCache().containsKey(key);
+    }
+
+    public void cacheHeader(String key, byte[] headerBytes) {
+        getHeaderCache().put(key, headerBytes);
+    }
+    public byte[] getHeader(String key) {
+        return getHeaderCache().get(key);
+    }
+
+    public boolean headerExists(String key) {
+        return getHeaderCache().containsKey(key);
+    }
+
+    public void cacheFilesize(String key, int size) {
+        getFilesizeCache().put(key, size);
+    }
+
+    public int getFilesize(String key) {
+        return getFilesizeCache().get(key);
+    }
+
+    public boolean filesizeExists(String key) {
+        return getFilesizeCache().containsKey(key);
     }
 
     public CacheConfig getCacheConfig() {

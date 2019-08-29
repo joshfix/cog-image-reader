@@ -26,7 +26,7 @@ public class HttpRangeReader implements RangeReader {
     protected ByteBuffer buffer;
 
     protected int timeout = 5;
-    protected int fileSize = -1;
+    protected int filesize = -1;
     protected int headerByteLength = 16384;
 
     public static final String CONTENT_RANGE_HEADER = "content-range";
@@ -49,6 +49,7 @@ public class HttpRangeReader implements RangeReader {
     }
 
     public byte[] readHeader(int headerByteLength) {
+        System.out.println("Reading header");
         this.headerByteLength = headerByteLength;
         byte[] headerBytes = read(0, headerByteLength);
         writeValue(0, headerBytes);
@@ -59,9 +60,13 @@ public class HttpRangeReader implements RangeReader {
         this.headerByteLength = headerByteLength;
     }
 
+    public void setFilesize(int filesize) {
+        this.filesize = filesize;
+        buffer = ByteBuffer.allocate(filesize);
+    }
     @Override
-    public int getFileSize() {
-        return fileSize;
+    public int getFilesize() {
+        return filesize;
     }
 
     @Override
@@ -93,7 +98,11 @@ public class HttpRangeReader implements RangeReader {
 
     protected void writeValue(int position, byte[] bytes) {
         buffer.position(position);
-        buffer.put(bytes);
+        try {
+            buffer.put(bytes);
+        } catch (Exception e) {
+            String h = "hi";
+        }
     }
 
     /**
@@ -145,7 +154,13 @@ public class HttpRangeReader implements RangeReader {
                 } else {
                     // this range starts inside the header range, but ends outside of it.
                     // add a new range that starts at the end of the header range
-                    newRanges.add(new long[]{headerByteLength + 1, ranges[i][1]});
+                    long[] newRange = new long[]{headerByteLength + 1, ranges[i][1]};
+
+                    if (newRange[0] >= newRange[1]) {
+                        // TODO this can happen because of the way the header is added to CogTileInfo -- needs to be fixed
+                        continue;
+                    }
+                    newRanges.add(newRange);
                     System.out.println("Modified range " + ranges[i][0] + "-" + ranges[i][1]
                             + " to " + (headerByteLength + 1) + "-" + ranges[i][1] + " as it overlaps with data previously"
                             + " read in the header request");
@@ -195,15 +210,15 @@ public class HttpRangeReader implements RangeReader {
         try {
             HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
 
-            // if the fileSize variable has not been initialized, read it from the response
-            if (fileSize == -1) {
+            // if the filesize variable has not been initialized, read it from the response
+            if (filesize == -1) {
                 HttpHeaders headers = response.headers();
                 String contentRange = headers.firstValue(CONTENT_RANGE_HEADER).get();
                 if (contentRange.contains("/")) {
                     String length = contentRange.split("/")[1];
                     try {
-                        fileSize = Integer.parseInt(length);
-                        buffer = ByteBuffer.allocate(fileSize);
+                        filesize = Integer.parseInt(length);
+                        buffer = ByteBuffer.allocate(filesize);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }

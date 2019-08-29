@@ -19,12 +19,12 @@ package it.geosolutions.imageioimpl.plugins.tiff.stream;
 import java.io.Serializable;
 
 /** Simple key for cache entries */
-public class CacheEntryKey implements Serializable {
+public class TileCacheEntryKey implements Serializable {
 
     private String url;
     private int tileIndex;
 
-    public CacheEntryKey(String url, int tileIndex) {
+    public TileCacheEntryKey(String url, int tileIndex) {
         this.url = url;
         this.tileIndex = tileIndex;
     }
@@ -55,9 +55,9 @@ public class CacheEntryKey implements Serializable {
             return false;
         }
 
-        CacheEntryKey that = (CacheEntryKey) o;
+        TileCacheEntryKey that = (TileCacheEntryKey) o;
 
-        if (url != that.url || tileIndex != that.tileIndex) {
+        if (!url.equals(that.url) || tileIndex != that.tileIndex) {
             return false;
         }
         return true;

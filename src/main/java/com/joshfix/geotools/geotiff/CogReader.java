@@ -37,6 +37,7 @@ package com.joshfix.geotools.geotiff;
 
 import it.geosolutions.imageio.maskband.DatasetLayout;
 import it.geosolutions.imageioimpl.plugins.tiff.CogImageReaderSpi;
+import it.geosolutions.imageioimpl.plugins.tiff.stream.CachingHttpCogImageInputStreamSpi;
 import it.geosolutions.imageioimpl.plugins.tiff.stream.HttpCogImageInputStreamSpi;
 import it.geosolutions.imageioimpl.plugins.tiff.TiffDatasetLayoutImpl;
 import it.geosolutions.jaiext.range.NoDataContainer;
@@ -206,8 +207,10 @@ public class CogReader extends AbstractGridCoverage2DReader implements GridCover
             if (source instanceof ImageInputStream) inStream = (ImageInputStream) source;
             else {
 
-                //inStreamSPI = ImageIOExt.getImageInputStreamSPI(source);
-                inStreamSPI = new HttpCogImageInputStreamSpi();
+                inStreamSPI = ImageIOExt.getImageInputStreamSPI(source);
+                LOGGER.severe("inStreamSPI: " + inStreamSPI.getClass().getName());
+                //inStreamSPI = new HttpCogImageInputStreamSpi();
+                inStreamSPI = new CachingHttpCogImageInputStreamSpi();
                 if (inStreamSPI == null)
                     throw new IllegalArgumentException("No input stream for the provided source");
                 inStream =

@@ -2,7 +2,6 @@ package it.geosolutions.imageioimpl.plugins.tiff;
 
 import it.geosolutions.imageio.stream.input.spi.URLImageInputStreamSpi;
 import it.geosolutions.imageioimpl.plugins.tiff.stream.CachingHttpCogImageInputStream;
-import it.geosolutions.imageioimpl.plugins.tiff.stream.HttpCogImageInputStream;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReadParam;
@@ -58,6 +57,7 @@ public class Test {
     }
 
     public static void readCog() throws Exception {
+        cogStream = new CachingHttpCogImageInputStream(cogImageUrl);
         display(readCog(param));
     }
 
