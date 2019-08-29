@@ -22,7 +22,6 @@ public class CogImageReader extends TIFFImageReader {
         super(originatingProvider);
     }
 
-
     @Override
     public BufferedImage read(int imageIndex, ImageReadParam param) throws IOException {
         // if the image input stream isn't a CogImageInputStream, skip all this nonsense and just use the original code

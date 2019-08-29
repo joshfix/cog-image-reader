@@ -30,8 +30,8 @@ public class Test {
     static ImageReadParam param = new ImageReadParam();
     static boolean saveFile = false;
     static String cogImageUrl = "https://s3-us-west-2.amazonaws.com/landsat-pds/c1/L8/153/075/LC08_L1TP_153075_20190515_20190515_01_RT/LC08_L1TP_153075_20190515_20190515_01_RT_B2.TIF";
-    //static ImageInputStream cogStream = new CachingHttpCogImageInputStream(cogImageUrl);
-    static ImageInputStream cogStream = new HttpCogImageInputStream(cogImageUrl);
+    static ImageInputStream cogStream = new CachingHttpCogImageInputStream(cogImageUrl);
+    //static ImageInputStream cogStream = new HttpCogImageInputStream(cogImageUrl);
 
     static {
         int x = 1000;
@@ -44,13 +44,17 @@ public class Test {
     public static void main(String... args) throws Exception {
 
         //headToHeadTest(10);
-
-        readCog();
-        System.out.println("Read image once.  Reading again.");
-        readCog();
-
+        //readCog();
         //readTiff();
+        readCog(4);
 
+    }
+
+    public static void readCog(int numReads) throws Exception {
+        for (int i = 0; i < numReads; i++) {
+            System.out.println("Reading COG (" + i + ")");
+            readCog();
+        }
     }
 
     public static void readCog() throws Exception {

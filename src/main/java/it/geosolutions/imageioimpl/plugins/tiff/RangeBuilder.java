@@ -11,15 +11,16 @@ public class RangeBuilder {
 
     protected long currentRangeStart;
     protected long currentRangeEnd;
-    protected boolean finalized = false;
+    protected boolean tileAdded = false;
     protected List<long[]> ranges = new ArrayList<>();
 
-    public RangeBuilder(long currentRangeStart, long currentRangeEnd) {
-        this.currentRangeStart = currentRangeStart;
-        this.currentRangeEnd = currentRangeEnd;
+    public RangeBuilder(long initialRangeStart, long initialRangeEnd) {
+        currentRangeStart = initialRangeStart;
+        currentRangeEnd = initialRangeEnd;
     }
 
     public void addTileRange(long offset, long tileOrStripByteCount) {
+        tileAdded = true;
         if (offset == currentRangeEnd + 1) {
             // this tile starts where the last one left off
             currentRangeEnd = offset + tileOrStripByteCount - 1;
@@ -32,9 +33,8 @@ public class RangeBuilder {
     }
 
     public List<long[]> getRanges() {
-        if (!finalized) {
+        if (tileAdded) {
             ranges.add(new long[]{currentRangeStart, currentRangeEnd});
-            finalized = true;
         }
         return ranges;
     }

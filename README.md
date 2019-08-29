@@ -28,17 +28,21 @@ it is statically coded to fetch the first 16KB (mimicking the default behavior o
 configurable in the future.  The class also contains logic to prevent re-reading data from supplied byte ranges if the 
 byte ranges fall inside of the header range that has already been read. 
 
-[CogImageInputStream](./src/main/java/it/geosolutions/imageioimpl/plugins/tiff/CogImageInputStream.java) is an interface 
+[CogImageInputStream](./src/main/java/it/geosolutions/imageioimpl/plugins/tiff/stream/CogImageInputStream.java) is an interface 
 that defines a single method, `readRanges`, and accepts a 2D long array as a method parameter containing all of the 
 start and end byte positions that need to be read.  The CogImageReader checks to see if the ImageInputStream being used 
 is an instance of this class to determine if it should attempt to build and fetch the byte ranges.  If the 
 ImageInputStream does not implement CogImageInputStream, CogImageReader will simply pass the request on to TIFFImageReader. 
 I will likely provide S3, Azure, and Google Cloud implementations in the future.
  
-[HttpCogImageInputStream](./src/main/java/it/geosolutions/imageioimpl/plugins/tiff/HttpCogImageInputStream.java) is an 
+[HttpCogImageInputStream](./src/main/java/it/geosolutions/imageioimpl/plugins/tiff/stream/HttpCogImageInputStream.java) is an 
 ImageInputStream implementation that uses the [HttpRangeReader](./src/main/java/it/geosolutions/imageioimpl/plugins/tiff/HttpRangeReader)  
 to perform asynchronous range requests and store the resultant data in a delegate MemoryCacheImageInputStream.  
  
+[CachingHttpCogImageInputStream](./src/main/java/it/geosolutions/imageioimpl/plugins/tiff/stream/CachingHttpCogImageInputStream.java)
+is an ImageInputStream implementation that will cache GeoTIFF tiles using Ehcache to prevent additional HTTP requests 
+for data that is expected to be read multiple times. 
+
 This project is still very much in the prototype stage and still needs better error handling, logging, tests, etc.  The 
 package name aligns with the imageio-ext TIFFImageReader to take advantage of protected class members.  There are still 
 some private methods and variables in TIFFImageReader that require duplication of code and use of reflection in 

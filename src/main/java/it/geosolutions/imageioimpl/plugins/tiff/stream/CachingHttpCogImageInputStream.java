@@ -98,9 +98,9 @@ public class CachingHttpCogImageInputStream extends ImageInputStreamImpl impleme
             }
         });
 
-        // read data with the RangeReader and set the byte order and pointer on the new input stream
+        // get the ranges for the tiles that are not already cached.  if there are none, simply return
         List<long[]> ranges = rangeBuilder.getRanges();
-        if (ranges.size() == 1) {
+        if (ranges.size() == 0) {
             return;
         }
 
