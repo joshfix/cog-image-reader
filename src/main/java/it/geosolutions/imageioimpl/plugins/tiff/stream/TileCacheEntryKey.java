@@ -37,10 +37,6 @@ public class TileCacheEntryKey implements Serializable {
         return tileIndex;
     }
 
-    public void setTileIndex(int tileIndex) {
-        this.tileIndex = tileIndex;
-    }
-
     @Override
     public String toString() {
         return String.format("CacheEntry[url: %s, tile index: %d]", url, tileIndex);

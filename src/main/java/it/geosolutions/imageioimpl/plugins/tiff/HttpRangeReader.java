@@ -1,5 +1,7 @@
 package it.geosolutions.imageioimpl.plugins.tiff;
 
+import it.geosolutions.imageioimpl.plugins.tiff.stream.CachingHttpCogImageInputStreamSpi;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
@@ -12,6 +14,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.Logger;
 
 import static java.net.http.HttpClient.Version.HTTP_2;
 
@@ -30,6 +33,7 @@ public class HttpRangeReader implements RangeReader {
     protected int headerByteLength = 16384;
 
     public static final String CONTENT_RANGE_HEADER = "content-range";
+    private final static Logger LOGGER = Logger.getLogger(HttpRangeReader.class.getName());
 
     public HttpRangeReader(String url) {
         this(URI.create(url));
@@ -49,7 +53,7 @@ public class HttpRangeReader implements RangeReader {
     }
 
     public byte[] readHeader(int headerByteLength) {
-        System.out.println("Reading header");
+        LOGGER.fine("Reading header");
         this.headerByteLength = headerByteLength;
         byte[] headerBytes = read(0, headerByteLength);
         writeValue(0, headerBytes);
@@ -93,7 +97,7 @@ public class HttpRangeReader implements RangeReader {
 
         awaitCompletion(futureResults);
         Instant end = Instant.now();
-        System.out.println("Time to read all ranges: " + Duration.between(start, end));
+        LOGGER.fine("Time to read all ranges: " + Duration.between(start, end));
     }
 
     protected void writeValue(int position, byte[] bytes) {
@@ -101,7 +105,7 @@ public class HttpRangeReader implements RangeReader {
         try {
             buffer.put(bytes);
         } catch (Exception e) {
-            String h = "hi";
+            LOGGER.severe("Error writing bytes to ByteBuffer for source " + uri);
         }
     }
 
@@ -149,7 +153,7 @@ public class HttpRangeReader implements RangeReader {
                 modified = true;
                 if (ranges[i][1] < headerByteLength) {
                     // this range is fully inside the header which was already read; discard this range
-                    System.out.println("Removed range " + ranges[i][0] + "-" + ranges[i][1] + " as it lies fully within"
+                    LOGGER.fine("Removed range " + ranges[i][0] + "-" + ranges[i][1] + " as it lies fully within"
                             + " the data already read in the header request");
                 } else {
                     // this range starts inside the header range, but ends outside of it.
@@ -161,7 +165,7 @@ public class HttpRangeReader implements RangeReader {
                         continue;
                     }
                     newRanges.add(newRange);
-                    System.out.println("Modified range " + ranges[i][0] + "-" + ranges[i][1]
+                    LOGGER.fine("Modified range " + ranges[i][0] + "-" + ranges[i][1]
                             + " to " + (headerByteLength + 1) + "-" + ranges[i][1] + " as it overlaps with data previously"
                             + " read in the header request");
                 }
@@ -174,13 +178,13 @@ public class HttpRangeReader implements RangeReader {
         if (modified) {
             return newRanges.toArray(new long[][]{});
         } else {
-            System.out.println("No ranges modified.");
+            LOGGER.fine("No ranges modified.");
             return ranges;
         }
     }
 
     protected HttpRequest buildRequest(long[] range) {
-        System.out.println("Building request for range " + range[0] + '-' + range[1] + " to " + uri.toString());
+        LOGGER.fine("Building request for range " + range[0] + '-' + range[1] + " to " + uri.toString());
         return HttpRequest.newBuilder()
                 .GET()
                 .uri(uri)

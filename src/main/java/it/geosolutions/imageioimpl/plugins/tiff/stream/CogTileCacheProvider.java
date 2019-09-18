@@ -11,4 +11,16 @@ public interface CogTileCacheProvider {
     void cacheTile(TileCacheEntryKey key, byte[] tileBytes);
 
     boolean keyExists(TileCacheEntryKey key);
+
+    byte[] getHeader(String key);
+
+    void cacheHeader(String key, byte[] headerBytes);
+
+    boolean headerExists(String key);
+
+    int getFilesize(String key);
+
+    void cacheFilesize(String key, int filesize);
+
+    boolean filesizeExists(String key);
 }

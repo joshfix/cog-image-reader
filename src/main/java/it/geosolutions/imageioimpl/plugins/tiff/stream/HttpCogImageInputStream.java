@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
 import java.nio.ByteOrder;
+import java.util.logging.Logger;
 
 /**
  * @author joshfix
@@ -25,6 +26,7 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
     protected CogTileInfo cogTileInfo = new CogTileInfo();
     protected HttpRangeReader rangeReader;
     protected MemoryCacheImageInputStream delegate;
+    private final static Logger LOGGER = Logger.getLogger(HttpCogImageInputStream.class.getName());
 
     public HttpCogImageInputStream(String url) {
         this(URI.create(url));
@@ -64,7 +66,8 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
 
         // read all of the ranges asynchronously
         long[][] ranges = rangeBuilder.getRanges().toArray(new long[][]{});
-        System.out.println("Submitting " + ranges.length + " range request(s)");
+        LOGGER.fine("Submitting " + ranges.length + " range request(s)");
+
         rangeReader.readAsync(ranges);
 
         // obtain the byte order and stream position from the existing delegate

@@ -43,10 +43,17 @@ public enum CacheManagement implements CogTileCacheProvider {
     }
 
     final @VisibleForTesting void init(final boolean removeCacheIfExists) {
-        this.config = CacheConfig.getDefaultConfig();
-        this.manager = buildCache(config, removeCacheIfExists);
+        config = CacheConfig.getDefaultConfig();
+        manager = buildCache(config, removeCacheIfExists);
     }
 
+    /**
+     * Builds caches for tiles, headers, and filesizes.
+     *
+     * @param config
+     * @param removeCacheIfExists
+     * @return
+     */
     private static CacheManager buildCache(CacheConfig config, boolean removeCacheIfExists) {
         CacheManager manager = CacheManagerBuilder
                 .newCacheManagerBuilder().build();
@@ -102,25 +109,32 @@ public enum CacheManagement implements CogTileCacheProvider {
         return getTileCache().containsKey(key);
     }
 
+    @Override
     public void cacheHeader(String key, byte[] headerBytes) {
         getHeaderCache().put(key, headerBytes);
     }
+
+    @Override
     public byte[] getHeader(String key) {
         return getHeaderCache().get(key);
     }
 
+    @Override
     public boolean headerExists(String key) {
         return getHeaderCache().containsKey(key);
     }
 
+    @Override
     public void cacheFilesize(String key, int size) {
         getFilesizeCache().put(key, size);
     }
 
+    @Override
     public int getFilesize(String key) {
         return getFilesizeCache().get(key);
     }
 
+    @Override
     public boolean filesizeExists(String key) {
         return getFilesizeCache().containsKey(key);
     }

@@ -10,6 +10,7 @@ import java.net.URI;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * @author joshfix
@@ -23,6 +24,7 @@ public class CachingHttpCogImageInputStream extends ImageInputStreamImpl impleme
     protected HttpRangeReader rangeReader;
     protected CogTileInfo cogTileInfo;
     private static final int HEADER_TILE_INDEX = -100;
+    private final static Logger LOGGER = Logger.getLogger(CachingHttpCogImageInputStream.class.getName());
 
     public CachingHttpCogImageInputStream(String url) {
         this(URI.create(url));
@@ -103,7 +105,7 @@ public class CachingHttpCogImageInputStream extends ImageInputStreamImpl impleme
         }
 
         // read all they byte ranges for tiles that are not in cache
-        System.out.println("Submitting " + ranges.size() + " range request(s)");
+        LOGGER.fine("Submitting " + ranges.size() + " range request(s)");
         rangeReader.readAsync(ranges);
 
         // cache the bytes for each tile
@@ -119,13 +121,11 @@ public class CachingHttpCogImageInputStream extends ImageInputStreamImpl impleme
     @Override
     public int read() throws IOException {
         // TODO: implement, even though this never seems to get called by TIFFImageReader
-        //byte rawValue = readRawValue();
-        //return Byte.toUnsignedInt(rawValue);
         return 0;
     }
 
     @Override
-    public int read(byte[] b, int off, int len) throws IOException {
+    public int read(byte[] b, int off, int len) {
         // based on the stream position, determine which tile we are in and fetch the corresponding TileRange
         CogTileInfo.TileRange tileRange = cogTileInfo.getTileRange(streamPos);
 
@@ -148,7 +148,7 @@ public class CachingHttpCogImageInputStream extends ImageInputStreamImpl impleme
             try {
                 b[(int) i] = bytes[(int) (relativeStreamPos + i)];
             } catch (Exception e) {
-                System.out.println("Error copying bytes. requested offset: " + off
+                LOGGER.fine("Error copying bytes. requested offset: " + off
                         + " - requested length: " + len
                         + " - relativeStreamPos: " + relativeStreamPos
                         + " - streamPos: " + streamPos

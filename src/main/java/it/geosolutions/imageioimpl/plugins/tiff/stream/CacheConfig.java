@@ -16,124 +16,115 @@
  */
 package it.geosolutions.imageioimpl.plugins.tiff.stream;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/** Basic configuration properties for the S3 caching */
+/**
+ * Basic configuration properties for the S3 caching
+ */
 public class CacheConfig {
 
-    private static final Logger LOGGER = Logger.getLogger("S3");
-
-    // chunk size
-    public static final String S3_CHUNK_SIZE_BYTES = "s3.caching.chunkSizeBytes";
+    private static final Logger LOGGER = Logger.getLogger(CacheConfig.class.getName());
 
     // whether disk caching should be disabled
-    public static final String S3_CACHING_DISABLE_DISK = "s3.caching.disableDisk";
+    public static final String COG_CACHING_USE_DISK = "cog.caching.useDisk";
 
     // whether off heap should be used. currently not supported
-    public static final String S3_CACHING_USE_OFF_HEAP = "s3.caching.useOffHeap";
+    public static final String COG_CACHING_USE_OFF_HEAP = "cog.caching.useOffHeap";
 
     // the disk cache size.
-    public static final String S3_CACHING_DISK_CACHE_SIZE = "s3.caching.diskCacheSize";
+    public static final String COG_CACHING_DISK_CACHE_SIZE = "cog.caching.diskCacheSize";
 
     // path for the disk cache
-    public static final String S3_CACHING_DISK_PATH = "s3.caching.diskPath";
+    public static final String COG_CACHING_DISK_PATH = "cog.caching.diskPath";
 
     // alternatively an EhCache 2.x XML config can be used to override all cache config
-    public static final String S3_CACHING_EH_CACHE_CONFIG = "s3.caching.ehCacheConfig";
+    public static final String COG_CACHING_EH_CACHE_CONFIG = "cog.caching.ehCacheConfig";
+
+    // in heap cache size in bytes
+    public static final String COG_CACHING_HEAP_SIZE = "cog.caching.heapSize";
+
+    // time to idle in seconds
+    public static final String COG_CACHING_TIME_TO_IDLE = "cog.caching.timeToIdle";
+
+    // time to live in seconds
+    public static final String COG_CACHING_TIME_TO_LIVE = "cog.caching.timeToLive";
 
     public static final int MEBIBYTE_IN_BYTES = 1048576;
 
-    // in heap cache size in bytes
-    public static final String S3_CACHING_HEAP_SIZE = "s3.caching.heapSize";
+    private static boolean useDiskCache;
+    private static boolean useOffHeapCache;
+    private static int diskCacheSize;
+    private static int heapSize;
+    private static String cacheDirectory;
+    private static long timeToIdle;
+    private static long timeToLive;
 
-    // time to idle in seconds
-    public static final String S3_CACHING_TIME_TO_IDLE = "s3.caching.timeToIdle";
-
-    // time to live in seconds
-    public static final String S3_CACHING_TIME_TO_LIVE = "s3.caching.timeToLive";
-
-    private boolean useDiskCache = true;
-    private boolean useOffHeapCache = false;
-    private int diskCacheSize = 500 * MEBIBYTE_IN_BYTES;
-    private int heapSize = 50 * MEBIBYTE_IN_BYTES;
-    private Path cacheDirectory;
-    private long timeToIdle = 0;
-    private long timeToLive = 0;
+    public CacheConfig() {
+        useDiskCache = Boolean.getBoolean(getPropertyValue(COG_CACHING_USE_DISK, "false"));
+        useOffHeapCache = Boolean.getBoolean(getPropertyValue(COG_CACHING_USE_OFF_HEAP, "false"));
+        diskCacheSize = Integer.parseInt(getPropertyValue(COG_CACHING_DISK_CACHE_SIZE, Integer.toString(500 * MEBIBYTE_IN_BYTES)));
+        heapSize = Integer.parseInt(getPropertyValue(COG_CACHING_HEAP_SIZE, Integer.toString(50 * MEBIBYTE_IN_BYTES)));
+        cacheDirectory = getPropertyValue(COG_CACHING_DISK_PATH, null);
+        timeToIdle = Integer.parseInt(getPropertyValue(COG_CACHING_TIME_TO_IDLE, "0"));
+        timeToLive = Integer.parseInt(getPropertyValue(COG_CACHING_TIME_TO_LIVE, "0"));
+    }
 
     public static CacheConfig getDefaultConfig() {
         CacheConfig config = new CacheConfig();
 
-        if (Boolean.getBoolean(S3_CACHING_DISABLE_DISK)) {
+        if (useDiskCache) {
             config.setUseDiskCache(false);
         }
 
-        if (Boolean.getBoolean(S3_CACHING_USE_OFF_HEAP)) {
+        if (useOffHeapCache) {
             config.setUseOffHeapCache(true);
         }
 
-        if (System.getProperty(S3_CACHING_HEAP_SIZE) != null) {
-            try {
-                Integer heapSize = Integer.parseInt(System.getProperty(S3_CACHING_HEAP_SIZE));
-                config.setHeapSize(heapSize);
-            } catch (NumberFormatException e) {
-                LOGGER.log(Level.FINER, "Can't parse heap", e);
-            }
+        if (heapSize > 0) {
+            config.setHeapSize(heapSize);
         }
 
-        if (System.getProperty(S3_CACHING_DISK_CACHE_SIZE) != null) {
-            try {
-                Integer diskCacheSize =
-                        Integer.parseInt(System.getProperty(S3_CACHING_DISK_CACHE_SIZE));
-                config.setDiskCacheSize(diskCacheSize);
-            } catch (NumberFormatException e) {
-                LOGGER.log(Level.FINER, "Can't parse disk cache size", e);
-            }
+        if (diskCacheSize > 0) {
+            config.setDiskCacheSize(diskCacheSize);
         }
 
-        if (System.getProperty(S3_CACHING_DISK_PATH) != null) {
+        if (cacheDirectory != null) {
             try {
-                String diskPath = System.getProperty(S3_CACHING_DISK_PATH);
-                Path cachePath = Paths.get(diskPath);
-                config.setCacheDirectory(cachePath);
+                config.setCacheDirectory(cacheDirectory);
             } catch (InvalidPathException e) {
                 LOGGER.log(Level.FINER, "Can't parse disk cache path", e);
             }
         } else {
             if (config.isUseDiskCache()) {
-                try {
-                    config.setCacheDirectory(Files.createTempDirectory("s3Cachine"));
-                } catch (IOException e) {
-                    throw new RuntimeException(
-                            "CAN'T CREATE TEMP CACHING DIRECTORY AND NO DIRECTORY SPECIFIED", e);
-                }
+                config.setCacheDirectory("cogCachine");
             }
         }
 
-        if (System.getProperty(S3_CACHING_TIME_TO_IDLE) != null) {
-            try {
-                long timeToIdle = Long.parseLong(System.getProperty(S3_CACHING_TIME_TO_IDLE));
-                config.setTimeToIdle(timeToIdle);
-            } catch (NumberFormatException e) {
-                LOGGER.log(Level.FINER, "Can't parse time to idle", e);
-            }
+        if (timeToIdle > 0) {
+            config.setTimeToIdle(timeToIdle);
         }
 
-        if (System.getProperty(S3_CACHING_TIME_TO_LIVE) != null) {
-            try {
-                long timeToLive = Long.parseLong(System.getProperty(S3_CACHING_TIME_TO_LIVE));
-                config.setTimeToLive(timeToLive);
-            } catch (NumberFormatException e) {
-                LOGGER.log(Level.FINER, "Can't parse time to live", e);
-            }
+        if (timeToLive > 0) {
+            config.setTimeToLive(timeToLive);
         }
 
         return config;
+    }
+
+    public static String getPropertyValue(String key, String defaultValue) {
+        String environmentKey = key.toUpperCase().replace(".", "_");
+        String value = System.getenv(environmentKey);
+        if (null != value) {
+            return value;
+        }
+        value = System.getProperty(key);
+        if (null != value) {
+            return value;
+        }
+
+        return defaultValue;
     }
 
     public boolean isUseDiskCache() {
@@ -160,11 +151,11 @@ public class CacheConfig {
         this.diskCacheSize = diskCacheSize;
     }
 
-    public Path getCacheDirectory() {
+    public String getCacheDirectory() {
         return cacheDirectory;
     }
 
-    public void setCacheDirectory(Path cacheDirectory) {
+    public void setCacheDirectory(String cacheDirectory) {
         this.cacheDirectory = cacheDirectory;
     }
 

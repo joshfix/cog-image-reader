@@ -2,6 +2,7 @@ package it.geosolutions.imageioimpl.plugins.tiff;
 
 import it.geosolutions.imageio.plugins.tiff.BaselineTIFFTagSet;
 import it.geosolutions.imageio.plugins.tiff.TIFFField;
+import it.geosolutions.imageioimpl.plugins.tiff.stream.CachingHttpCogImageInputStreamSpi;
 import it.geosolutions.imageioimpl.plugins.tiff.stream.CogImageInputStream;
 
 import javax.imageio.IIOException;
@@ -11,12 +12,15 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.logging.Logger;
 
 /**
  * @author joshfix
  * Created on 2019-08-22
  */
 public class CogImageReader extends TIFFImageReader {
+
+    private final static Logger LOGGER = Logger.getLogger(CogImageReader.class.getName());
 
     public CogImageReader(ImageReaderSpi originatingProvider) {
         super(originatingProvider);
@@ -29,7 +33,7 @@ public class CogImageReader extends TIFFImageReader {
             return super.read(imageIndex, param);
         }
 
-        System.out.println("Reading pixels at offset (" + param.getSourceRegion().getX() + ", "
+        LOGGER.fine("Reading pixels at offset (" + param.getSourceRegion().getX() + ", "
                 + param.getSourceRegion().getY() + ") with a width of " + param.getSourceRegion().getWidth()
                 + "px and height of " + param.getSourceRegion().getHeight() + "px");
 
@@ -58,7 +62,7 @@ public class CogImageReader extends TIFFImageReader {
         int maxTileX = TIFFImageWriter.XToTileX(srcRegion.x + srcRegion.width - 1, 0, tileOrStripWidth);
         int maxTileY = TIFFImageWriter.YToTileY(srcRegion.y + srcRegion.height - 1, 0, tileOrStripHeight);
 
-        System.out.println("Reading tiles (" + minTileX + "," + minTileY + ") - (" + maxTileX + "," + maxTileY + ")");
+        LOGGER.fine("Reading tiles (" + minTileX + "," + minTileY + ") - (" + maxTileX + "," + maxTileY + ")");
 
         CogTileInfo cogTileInfo = ((CogImageInputStream)stream).getCogTileInfo();
 

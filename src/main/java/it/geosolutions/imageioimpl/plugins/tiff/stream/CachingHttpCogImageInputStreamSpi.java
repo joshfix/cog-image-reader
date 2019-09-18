@@ -20,7 +20,7 @@ public class CachingHttpCogImageInputStreamSpi extends ImageInputStreamSpi {
     private static final String vendorName = "Josh Fix";
     private static final String version = "1.0";
     private static final Class<String> inputClass = String.class;
-    //private final static Logger LOGGER = Logger.getLogger(CachingHttpCogImageInputStreamSpi.class.getName());
+    private final static Logger LOGGER = Logger.getLogger(CachingHttpCogImageInputStreamSpi.class.getName());
 
     public CachingHttpCogImageInputStreamSpi() {
         super(vendorName, version, inputClass);
