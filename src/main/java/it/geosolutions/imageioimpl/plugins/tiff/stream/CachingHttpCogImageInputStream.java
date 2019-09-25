@@ -3,6 +3,7 @@ package it.geosolutions.imageioimpl.plugins.tiff.stream;
 import it.geosolutions.imageioimpl.plugins.tiff.CogTileInfo;
 import it.geosolutions.imageioimpl.plugins.tiff.HttpRangeReader;
 import it.geosolutions.imageioimpl.plugins.tiff.RangeBuilder;
+import it.geosolutions.imageioimpl.plugins.tiff.RangeReader;
 
 import javax.imageio.stream.ImageInputStreamImpl;
 import java.io.IOException;
@@ -21,7 +22,7 @@ public class CachingHttpCogImageInputStream extends ImageInputStreamImpl impleme
     protected int headerByteLength = 16384;
 
     protected URI uri;
-    protected HttpRangeReader rangeReader;
+    protected RangeReader rangeReader;
     protected CogTileInfo cogTileInfo;
     private static final int HEADER_TILE_INDEX = -100;
     private final static Logger LOGGER = Logger.getLogger(CachingHttpCogImageInputStream.class.getName());

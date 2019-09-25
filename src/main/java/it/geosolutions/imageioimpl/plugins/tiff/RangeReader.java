@@ -9,11 +9,10 @@ import java.util.Collection;
 public interface RangeReader {
 
     byte[] getBytes();
-
     int getFilesize();
-
+    void setFilesize(int filesize);
     void readAsync(long[]... ranges);
-
     void readAsync(Collection<long[]> ranges);
+    byte[] readHeader(int headerByteLength);
 
 }

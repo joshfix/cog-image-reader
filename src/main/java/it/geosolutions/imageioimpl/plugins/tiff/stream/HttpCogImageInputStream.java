@@ -3,6 +3,7 @@ package it.geosolutions.imageioimpl.plugins.tiff.stream;
 import it.geosolutions.imageioimpl.plugins.tiff.CogTileInfo;
 import it.geosolutions.imageioimpl.plugins.tiff.HttpRangeReader;
 import it.geosolutions.imageioimpl.plugins.tiff.RangeBuilder;
+import it.geosolutions.imageioimpl.plugins.tiff.RangeReader;
 
 import javax.imageio.stream.IIOByteBuffer;
 import javax.imageio.stream.ImageInputStream;
@@ -24,7 +25,7 @@ public class HttpCogImageInputStream implements ImageInputStream, CogImageInputS
 
     protected URI uri;
     protected CogTileInfo cogTileInfo = new CogTileInfo();
-    protected HttpRangeReader rangeReader;
+    protected RangeReader rangeReader;
     protected MemoryCacheImageInputStream delegate;
     private final static Logger LOGGER = Logger.getLogger(HttpCogImageInputStream.class.getName());
 

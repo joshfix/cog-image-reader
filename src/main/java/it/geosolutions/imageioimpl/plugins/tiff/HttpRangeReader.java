@@ -1,7 +1,5 @@
 package it.geosolutions.imageioimpl.plugins.tiff;
 
-import it.geosolutions.imageioimpl.plugins.tiff.stream.CachingHttpCogImageInputStreamSpi;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
@@ -52,6 +50,7 @@ public class HttpRangeReader implements RangeReader {
                 .build();
     }
 
+    @Override
     public byte[] readHeader(int headerByteLength) {
         LOGGER.fine("Reading header");
         this.headerByteLength = headerByteLength;
@@ -64,6 +63,7 @@ public class HttpRangeReader implements RangeReader {
         this.headerByteLength = headerByteLength;
     }
 
+    @Override
     public void setFilesize(int filesize) {
         this.filesize = filesize;
         buffer = ByteBuffer.allocate(filesize);
