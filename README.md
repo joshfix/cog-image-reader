@@ -1,7 +1,7 @@
 # Cloud Optimized GeoTIFF Reader 
 
-This project is currently being refactored to be merged into imageio-ext.  For the latest, please see 
-https://github.com/joshfix/imageio-ext/tree/cog/plugin/cog
+This project has been merged into imageio-ext and is now deprecated.  For the latest, please see 
+https://github.com/geosolutions-it/imageio-ext/tree/master/plugin/cog
 
 ### Overview
 Cloud Optimized GeoTIFF (COG) reader for imageio-ext.   
